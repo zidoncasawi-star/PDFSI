@@ -79,8 +79,21 @@ export function ShareMenu({
     };
   }, [onClose]);
 
-  const top = Math.min(anchorRect.bottom + 8, window.innerHeight - 220);
-  const left = Math.min(anchorRect.left, window.innerWidth - 340);
+  const WIDTH = 320;
+  const HEIGHT = 220;
+  const GAP = 8;
+  const MARGIN = 8;
+
+  // Anchor to the button: open below/right-aligned-if-needed by default,
+  // flip above or to the left only when there isn't room, so the popover
+  // always stays attached to the button that opened it.
+  let left = anchorRect.left;
+  if (left + WIDTH + MARGIN > window.innerWidth) left = anchorRect.right - WIDTH;
+  left = Math.min(Math.max(left, MARGIN), window.innerWidth - WIDTH - MARGIN);
+
+  let top = anchorRect.bottom + GAP;
+  if (top + HEIGHT + MARGIN > window.innerHeight) top = anchorRect.top - HEIGHT - GAP;
+  top = Math.min(Math.max(top, MARGIN), window.innerHeight - HEIGHT - MARGIN);
 
   return (
     <div
