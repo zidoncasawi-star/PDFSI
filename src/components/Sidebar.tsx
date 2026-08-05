@@ -16,9 +16,7 @@ export default function Sidebar({ active, onNavigate }: Props) {
   return (
     <aside className="bg-surface-container-low h-screen w-64 flex flex-col border-r border-outline-variant fixed left-0 top-0 z-40 hidden md:flex">
       <div className="p-gutter flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-          <span className="material-symbols-outlined text-on-primary">verified</span>
-        </div>
+        <img src="/icon.png" alt="Sign Pdf" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
         <div className="flex flex-col">
           <span className="text-xl font-bold text-primary">Sign Pdf</span>
           <span className="text-xs text-on-surface-variant">Admin Dashboard</span>

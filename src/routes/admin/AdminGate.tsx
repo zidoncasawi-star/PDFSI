@@ -86,7 +86,7 @@ export default function AdminGate({ children }: { children: ReactNode }) {
     <div className="min-h-screen flex items-center justify-center p-6 bg-background">
       <div className="w-full max-w-md flex flex-col gap-6">
         <div className="flex items-center gap-2 justify-center">
-          <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center text-on-primary font-bold">S</div>
+          <img src="/icon.png" alt="Sign Pdf" className="w-9 h-9 rounded-lg object-cover" />
           <span className="text-xl font-bold text-on-surface">Sign Pdf Admin</span>
         </div>
         <form onSubmit={submit} className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm flex flex-col gap-3">

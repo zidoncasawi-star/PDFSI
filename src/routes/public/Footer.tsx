@@ -15,7 +15,7 @@ export default function Footer() {
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-10 md:gap-20">
         <div className="flex flex-col gap-3 md:max-w-xs">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-on-primary font-bold text-sm">S</div>
+            <img src="/icon.png" alt="Sign Pdf" className="w-8 h-8 rounded-lg object-cover" />
             <span className="font-bold text-on-surface">Sign Pdf</span>
           </div>
           <p className="text-sm text-on-surface-variant">

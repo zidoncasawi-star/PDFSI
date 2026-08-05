@@ -4,7 +4,7 @@ export default function Header() {
   return (
     <header className="w-full h-16 flex items-center justify-between px-6 md:px-12 border-b border-outline-variant sticky top-0 bg-background/95 backdrop-blur-sm z-40">
       <Link to="/" className="flex items-center gap-2">
-        <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center text-on-primary font-bold">S</div>
+        <img src="/icon.png" alt="Sign Pdf" className="w-9 h-9 rounded-lg object-cover" />
         <span className="text-lg font-bold text-on-surface">Sign Pdf</span>
       </Link>
       <nav className="flex items-center gap-1 md:gap-2">

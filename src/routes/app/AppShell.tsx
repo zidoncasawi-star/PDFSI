@@ -21,7 +21,7 @@ export default function AppShell() {
     <div className="min-h-screen flex">
       <aside className="bg-surface-container-low h-screen w-64 flex flex-col border-r border-outline-variant fixed left-0 top-0 z-40 hidden md:flex">
         <div className="p-6 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-on-primary font-bold flex-shrink-0">S</div>
+          <img src="/icon.png" alt="Sign Pdf" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
           <div className="flex flex-col">
             <span className="text-lg font-bold text-primary">Sign Pdf</span>
             <span className="text-xs text-on-surface-variant">Web App</span>
