@@ -10,6 +10,7 @@ import {
   type User
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { PRESENCE_INTERVAL_MS, writePresenceHeartbeat } from './presence';
 import { auth, db, isFirebaseConfigured } from '../../firebase';
 
 interface AuthContextValue {
@@ -38,6 +39,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     return () => unsub();
   }, []);
+
+  // Presence heartbeat for the admin dashboard's "Online Now" stat — see
+  // routes/app/presence.ts and routes/admin/AdminApp.tsx.
+  useEffect(() => {
+    if (!user) return;
+    writePresenceHeartbeat(user.uid);
+    const id = setInterval(() => writePresenceHeartbeat(user.uid), PRESENCE_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [user]);
 
   const value: AuthContextValue = {
     user,

@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import { doc, increment, setDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
 import Seo from './Seo';
 
 // TODO: point this at the real installer once it's hosted somewhere public
@@ -22,6 +24,20 @@ const JSON_LD = {
   description:
     'Download Sign Pdf for Windows — a free PDF editor and electronic signature app. Sign PDF documents, add a digital signature to any PDF, and sign the PDF fully offline.'
 };
+
+// Counts clicks on the "Download now" button for the admin dashboard. Not
+// gated on sign-in (most visitors here aren't signed in yet), so this stays
+// a plain increment-only counter — see firestore.rules' stats/downloads.
+async function trackDownloadClick(e: React.MouseEvent<HTMLAnchorElement>) {
+  if (!db) return;
+  // Same-tab navigation to an external site would normally cancel any
+  // in-flight write, so hold the click briefly (capped) and let the write
+  // race a timeout rather than block navigation indefinitely.
+  e.preventDefault();
+  const write = setDoc(doc(db, 'stats', 'downloads'), { count: increment(1) }, { merge: true }).catch(() => {});
+  await Promise.race([write, new Promise((resolve) => setTimeout(resolve, 800))]);
+  window.location.href = DOWNLOAD_URL;
+}
 
 export default function Download() {
   return (
@@ -117,6 +133,7 @@ export default function Download() {
           </ul>
           <a
             href={DOWNLOAD_URL}
+            onClick={trackDownloadClick}
             className="self-start bg-primary text-on-primary font-semibold px-6 py-3 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2 mt-2"
           >
             <span className="material-symbols-outlined">download</span>

@@ -60,6 +60,39 @@ service cloud.firestore {
       allow delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
     }
 
+    // Anonymous, increment-only counter for the public Download page's
+    // "Download now" button, so the admin dashboard can see interest even
+    // from visitors who never sign up.
+    match /stats/downloads {
+      allow read: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['count']) &&
+        request.resource.data.count == 1;
+      allow update: if request.resource.data.keys().hasOnly(['count']) &&
+        request.resource.data.count == resource.data.count + 1;
+      allow delete: if false;
+    }
+
+    // One doc per device that has ever launched the Windows app, keyed by a
+    // random per-install ID generated locally (main.js's settings.deviceId)
+    // — lets the admin dashboard count real installs without requiring
+    // sign-in first.
+    match /installs/{deviceId} {
+      allow read: if isAdmin();
+      allow create: if request.resource.data.keys().hasAll(['platform', 'firstSeenAt', 'lastSeenAt']) &&
+        request.resource.data.platform is string;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeenAt', 'appVersion', 'ownerUid']);
+      allow delete: if false;
+    }
+
+    // Lightweight presence heartbeat: signed-in users (desktop or web) write
+    // their own doc every ~25s while the app is open; the admin dashboard
+    // treats a recent lastActiveAt as "currently online". Not authoritative
+    // (no clean offline detection), just a staleness check.
+    match /presence/{uid} {
+      allow read: if isAdmin();
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

@@ -1,4 +1,4 @@
-import { collection, collectionGroup, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, collectionGroup, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { WebDocument } from '../../types';
 
@@ -69,5 +69,49 @@ export function subscribeAllAuditEntries(cb: (entries: OwnedAuditEntry[]) => voi
     }));
     entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     cb(entries);
+  });
+}
+
+// stats/downloads.count — an increment-only counter bumped by the public
+// Download page's "Download now" button (see routes/public/Download.tsx).
+export function subscribeDownloadClicks(cb: (count: number) => void) {
+  if (!db) return () => {};
+  return onSnapshot(doc(db, 'stats', 'downloads'), (snap) => {
+    cb((snap.data()?.count as number) || 0);
+  });
+}
+
+export interface InstallRecord {
+  deviceId: string;
+  platform: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  appVersion?: string;
+  ownerUid?: string;
+}
+
+// One doc per device that has ever launched the Windows app (see
+// windows_app's cloud-api.js reportInstall()).
+export function subscribeInstalls(cb: (installs: InstallRecord[]) => void) {
+  if (!db) return () => {};
+  return onSnapshot(collection(db, 'installs'), (snap) => {
+    cb(snap.docs.map((d) => ({ deviceId: d.id, ...(d.data() as Omit<InstallRecord, 'deviceId'>) })));
+  });
+}
+
+export interface PresenceRecord {
+  uid: string;
+  lastActiveAt: string;
+  platform?: string;
+}
+
+// Heartbeat docs written every ~25s by any signed-in session (desktop or
+// web) while the app is open — see AuthContext.tsx and windows_app's
+// shell.js. There's no clean "offline" signal, so the admin dashboard just
+// treats a recent lastActiveAt as "currently online".
+export function subscribePresence(cb: (records: PresenceRecord[]) => void) {
+  if (!db) return () => {};
+  return onSnapshot(collection(db, 'presence'), (snap) => {
+    cb(snap.docs.map((d) => ({ uid: d.id, ...(d.data() as Omit<PresenceRecord, 'uid'>) })));
   });
 }

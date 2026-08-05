@@ -7,12 +7,22 @@ import {
   subscribeAllAuditEntries,
   subscribeAllWebDocuments,
   subscribeContactMessages,
+  subscribeDownloadClicks,
+  subscribeInstalls,
+  subscribePresence,
   subscribeWebUsers,
   type ContactMessage,
+  type InstallRecord,
   type OwnedAuditEntry,
+  type PresenceRecord,
   type WebUserDocument,
   type WebUserProfile
 } from './data';
+
+// A heartbeat older than this is considered stale — see the presence
+// heartbeat writers in AuthContext.tsx (web) and shell.js (desktop), both
+// of which write roughly every 25s.
+const ONLINE_THRESHOLD_MS = 75_000;
 
 const statusStyles: Record<string, string> = {
   draft: 'bg-surface-container-highest text-on-surface-variant',
@@ -34,6 +44,10 @@ export default function AdminApp() {
   const [webDocuments, setWebDocuments] = useState<WebUserDocument[]>([]);
   const [auditEntries, setAuditEntries] = useState<OwnedAuditEntry[]>([]);
   const [messages, setMessages] = useState<ContactMessage[]>([]);
+  const [downloadClicks, setDownloadClicks] = useState(0);
+  const [installs, setInstalls] = useState<InstallRecord[]>([]);
+  const [presence, setPresence] = useState<PresenceRecord[]>([]);
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     if (!isFirebaseConfigured) return;
@@ -41,13 +55,32 @@ export default function AdminApp() {
     const unsubDocs = subscribeAllWebDocuments(setWebDocuments);
     const unsubAudit = subscribeAllAuditEntries(setAuditEntries);
     const unsubMessages = subscribeContactMessages(setMessages);
+    const unsubDownloads = subscribeDownloadClicks(setDownloadClicks);
+    const unsubInstalls = subscribeInstalls(setInstalls);
+    const unsubPresence = subscribePresence(setPresence);
     return () => {
       unsubUsers();
       unsubDocs();
       unsubAudit();
       unsubMessages();
+      unsubDownloads();
+      unsubInstalls();
+      unsubPresence();
     };
   }, []);
+
+  // Presence docs only change on the writers' ~25s cadence, but a user can
+  // go stale (tab closed, app killed) without any new write ever arriving —
+  // so re-check "now" on a timer too, not just on snapshot updates.
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 10_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const onlineCount = useMemo(
+    () => presence.filter((p) => now - new Date(p.lastActiveAt).getTime() <= ONLINE_THRESHOLD_MS).length,
+    [presence, now]
+  );
 
   const userNameByUid = useMemo(() => {
     const map: Record<string, string> = {};
@@ -89,6 +122,12 @@ export default function AdminApp() {
           <>
             <Topbar title="Overview" subtitle="Live data from every signed-in user (desktop app + web app)" />
             <div className="p-6 lg:px-[6%] mx-auto w-full max-w-[1400px] flex flex-col gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatCard label="Total Users" value={webUsers.length} icon="group" tone="primary" />
+                <StatCard label="Online Now" value={onlineCount} icon="wifi" tone="tertiary" />
+                <StatCard label="Installs" value={installs.length} icon="desktop_windows" tone="secondary" />
+                <StatCard label="Download Clicks" value={downloadClicks} icon="download" tone="primary" />
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <StatCard label="Pending Signatures" value={totals.pending} icon="hourglass_empty" tone="tertiary" />
                 <StatCard label="Completed (30d)" value={totals.completed30d} icon="task_alt" tone="primary" />
