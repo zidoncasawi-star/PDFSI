@@ -1,4 +1,6 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { trackPageView } from './analytics';
 import PublicLayout from './routes/public/PublicLayout';
 import Landing from './routes/public/Landing';
 import Download from './routes/public/Download';
@@ -23,10 +25,19 @@ import SettingsPage from './routes/app/SettingsPage';
 import MobileSign from './routes/app/MobileSign';
 import Share from './routes/app/Share';
 
+function PageViewTracker() {
+  const location = useLocation();
+  useEffect(() => {
+    trackPageView(location.pathname + location.search);
+  }, [location.pathname, location.search]);
+  return null;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <PageViewTracker />
         <Routes>
           <Route element={<PublicLayout />}>
             <Route path="/" element={<Landing />} />
