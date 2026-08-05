@@ -9,7 +9,8 @@ const NAV_ITEMS = [
   { key: 'webusers', label: 'Users', icon: 'group' },
   { key: 'messages', label: 'Contact Messages', icon: 'mail' },
   { key: 'audit', label: 'Audit Logs', icon: 'history' },
-  { key: 'ads', label: 'Ads', icon: 'ads_click' }
+  { key: 'ads', label: 'Ads', icon: 'ads_click' },
+  { key: 'appUpdate', label: 'App Update', icon: 'system_update' }
 ];
 
 export function SidebarContent({ active, onNavigate }: Props) {

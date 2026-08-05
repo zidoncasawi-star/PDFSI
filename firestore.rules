@@ -103,6 +103,15 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Windows app version gate: admin sets the latest version, download URL
+    // and whether it's a forced (blocking) update from the admin
+    // dashboard's App Update page. Publicly readable — the desktop app
+    // checks this before the user is even signed in.
+    match /settings/appVersion {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

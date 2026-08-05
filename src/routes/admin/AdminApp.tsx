@@ -3,6 +3,7 @@ import Sidebar, { SidebarContent } from '../../components/Sidebar';
 import Topbar from '../../components/Topbar';
 import StatCard from '../../components/StatCard';
 import AdsPage from './AdsPage';
+import AppUpdatePage from './AppUpdatePage';
 import { isFirebaseConfigured } from '../../firebase';
 import {
   subscribeAllAuditEntries,
@@ -237,6 +238,8 @@ export default function AdminApp() {
         )}
 
         {page === 'ads' && <AdsPage onMenuClick={() => setMenuOpen(true)} />}
+
+        {page === 'appUpdate' && <AppUpdatePage onMenuClick={() => setMenuOpen(true)} />}
 
         {page === 'settings' && (
           <>
