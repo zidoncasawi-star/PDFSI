@@ -29,6 +29,18 @@ service cloud.firestore {
       }
     }
 
+    // Public contact form (Contact us page). Anyone can submit a message
+    // (shape-checked, capped length to deter abuse); only admins can read
+    // them back, and nothing can ever be edited or deleted from the client.
+    match /contactMessages/{messageId} {
+      allow create: if request.resource.data.keys().hasAll(['name', 'email', 'message', 'createdAt']) &&
+        request.resource.data.name is string && request.resource.data.name.size() <= 200 &&
+        request.resource.data.email is string && request.resource.data.email.size() <= 320 &&
+        request.resource.data.message is string && request.resource.data.message.size() <= 5000;
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
     // The desktop app ("Sign Pdf" Windows) writes one summary document per
     // installation here — it has no login of its own, so writes stay open
     // but shaped, and only admins can read the synced data back.

@@ -1,5 +1,13 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Landing from './routes/Landing';
+import PublicLayout from './routes/public/PublicLayout';
+import Landing from './routes/public/Landing';
+import Download from './routes/public/Download';
+import Faq from './routes/public/Faq';
+import Contact from './routes/public/Contact';
+import Activate from './routes/public/Activate';
+import Legal from './routes/public/Legal';
+import Terms from './routes/public/Terms';
+import Privacy from './routes/public/Privacy';
 import AdminApp from './routes/admin/AdminApp';
 import AdminGate from './routes/admin/AdminGate';
 import { AuthProvider } from './routes/app/AuthContext';
@@ -18,7 +26,17 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<Landing />} />
+          <Route element={<PublicLayout />}>
+            <Route path="/" element={<Landing />} />
+            <Route path="/download" element={<Download />} />
+            <Route path="/faq" element={<Faq />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/activate" element={<Activate />} />
+            <Route path="/legal" element={<Legal />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
+          </Route>
+
           <Route
             path="/admin/*"
             element={

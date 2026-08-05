@@ -1,6 +1,20 @@
-import { collection, collectionGroup, onSnapshot } from 'firebase/firestore';
+import { collection, collectionGroup, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { WebDocument } from '../../types';
+
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  message: string;
+  createdAt: string;
+}
+
+export function subscribeContactMessages(cb: (messages: ContactMessage[]) => void) {
+  if (!db) return () => {};
+  const q = query(collection(db, 'contactMessages'), orderBy('createdAt', 'desc'));
+  return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ContactMessage, 'id'>) }))));
+}
 
 export interface WebUserProfile {
   uid: string;

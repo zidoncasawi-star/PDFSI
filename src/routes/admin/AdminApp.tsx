@@ -3,7 +3,7 @@ import Sidebar from '../../components/Sidebar';
 import Topbar from '../../components/Topbar';
 import StatCard from '../../components/StatCard';
 import { isFirebaseConfigured, subscribeToDevices } from '../../firebase';
-import { subscribeAllWebDocuments, subscribeWebUsers, type WebUserDocument, type WebUserProfile } from './data';
+import { subscribeAllWebDocuments, subscribeContactMessages, subscribeWebUsers, type ContactMessage, type WebUserDocument, type WebUserProfile } from './data';
 import type { AuditEntry, DeviceDoc, DocRecord } from '../../types';
 
 type Device = DeviceDoc & { deviceId: string };
@@ -27,16 +27,19 @@ export default function AdminApp() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [webUsers, setWebUsers] = useState<WebUserProfile[]>([]);
   const [webDocuments, setWebDocuments] = useState<WebUserDocument[]>([]);
+  const [messages, setMessages] = useState<ContactMessage[]>([]);
 
   useEffect(() => {
     if (!isFirebaseConfigured) return;
     const unsubDevices = subscribeToDevices(setDevices);
     const unsubUsers = subscribeWebUsers(setWebUsers);
     const unsubDocs = subscribeAllWebDocuments(setWebDocuments);
+    const unsubMessages = subscribeContactMessages(setMessages);
     return () => {
       unsubDevices();
       unsubUsers();
       unsubDocs();
+      unsubMessages();
     };
   }, []);
 
@@ -170,6 +173,27 @@ export default function AdminApp() {
                   </div>
                 );
               })}
+            </div>
+          </>
+        )}
+
+        {page === 'messages' && (
+          <>
+            <Topbar title="Contact Messages" subtitle="Submissions from the public Contact us page" />
+            <div className="p-6 lg:px-[6%] mx-auto w-full max-w-[1000px] flex flex-col gap-4">
+              {messages.length === 0 && <p className="text-sm text-on-surface-variant">No messages yet.</p>}
+              {messages.map((m) => (
+                <div key={m.id} className="bg-surface-container-lowest border border-outline-variant rounded-xl p-md shadow-sm flex flex-col gap-2">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="font-semibold text-on-surface text-sm">{m.name}</p>
+                      <p className="text-xs text-on-surface-variant">{m.email}</p>
+                    </div>
+                    <span className="text-xs text-on-surface-variant whitespace-nowrap">{new Date(m.createdAt).toLocaleString()}</span>
+                  </div>
+                  <p className="text-sm text-on-surface whitespace-pre-wrap">{m.message}</p>
+                </div>
+              ))}
             </div>
           </>
         )}
