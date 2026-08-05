@@ -15,9 +15,20 @@ import {
   updateDocumentFields
 } from './data';
 import { createSignatureSession, deleteSignatureSession, subscribeSignatureSession } from './signatureSession';
+import { isMobileOrTabletDevice } from './device';
 import type { FieldType, Signatory, WebDocument, WebField } from '../../types';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+
+// Computed once per page load — device type doesn't change mid-session.
+const SHOW_QR_TAB = !isMobileOrTabletDevice();
+
+const MODAL_TABS: Array<['draw' | 'type' | 'upload' | 'qr', string]> = [
+  ['draw', 'Draw'],
+  ['type', 'Type'],
+  ['upload', 'Upload'],
+  ['qr', 'Scan QR']
+];
 
 const SIGNATORY_COLORS = ['#DC2626', '#111827', '#4B5563', '#8a5cf6', '#c2410c'];
 const FIELD_ICONS: Record<FieldType, string> = { signature: 'draw', initials: 'format_size', date: 'event', text: 'title' };
@@ -290,7 +301,7 @@ export default function Workspace() {
 
   // ---------- QR "sign on your phone" tab ----------
   useEffect(() => {
-    if (!modalFieldId || modalTab !== 'qr' || !user) return;
+    if (!modalFieldId || modalTab !== 'qr' || !user || !SHOW_QR_TAB) return;
     let cancelled = false;
     let unsubscribe: (() => void) | null = null;
 
@@ -616,12 +627,7 @@ export default function Workspace() {
             </div>
 
             <div className="flex gap-2 border-b border-outline-variant">
-              {([
-                ['draw', 'Draw'],
-                ['type', 'Type'],
-                ['upload', 'Upload'],
-                ['qr', 'Scan QR']
-              ] as const).map(([tab, label]) => (
+              {MODAL_TABS.filter(([tab]) => tab !== 'qr' || SHOW_QR_TAB).map(([tab, label]) => (
                 <button
                   key={tab}
                   onClick={() => setModalTab(tab)}
