@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-import { deleteDocument, getShareLink, listenDocuments } from './data';
+import { deleteDocument, getDocumentBytes, getShareLink, listenDocuments } from './data';
 import type { WebDocument } from '../../types';
 import { StatusChip, timeAgo } from './ui';
 
@@ -44,6 +44,24 @@ export default function Documents() {
     if (!user) return;
     if (!confirm(`Delete "${d.name}" permanently?`)) return;
     await deleteDocument(user.uid, d);
+  }
+
+  async function handleDownload(d: WebDocument) {
+    if (!user) return;
+    try {
+      const bytes = await getDocumentBytes(user.uid, d.storagePath);
+      const blob = new Blob([bytes as BlobPart], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = d.status === 'completed' ? `Signed-${d.name}` : d.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert('Could not download this document. Check your internet connection and try again.');
+    }
   }
 
   async function handleShare(d: WebDocument) {
@@ -135,6 +153,13 @@ export default function Documents() {
                     >
                       {d.status === 'completed' ? 'Open' : d.status === 'draft' ? 'Prepare' : 'Continue'}
                     </Link>
+                    <button
+                      onClick={() => handleDownload(d)}
+                      title="Download"
+                      className="text-on-surface-variant hover:text-primary transition-colors p-1"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">download</span>
+                    </button>
                     <button
                       onClick={() => handleShare(d)}
                       title="Share"
