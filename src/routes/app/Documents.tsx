@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { deleteDocument, getDocumentBytes, getShareLink, listenDocuments } from './data';
@@ -15,6 +15,23 @@ export default function Documents() {
   const [sort, setSort] = useState('date-desc');
   const [page, setPage] = useState(1);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  // navigator.share() must be called within the click's user-gesture window.
+  // Awaiting getShareLink() (a network round-trip) right before calling it
+  // can burn through that window and make share() silently fail, falling
+  // back to a clipboard copy with no share sheet. Pre-fetching the link on
+  // hover/focus means the click handler usually already has it cached, so
+  // share() fires immediately.
+  const shareUrlCache = useRef<Map<string, string | Promise<string>>>(new Map());
+
+  function prefetchShareLink(d: WebDocument) {
+    if (shareUrlCache.current.has(d.id)) return;
+    const promise = getShareLink(d.storagePath);
+    shareUrlCache.current.set(d.id, promise);
+    promise.then(
+      (url) => shareUrlCache.current.set(d.id, url),
+      () => shareUrlCache.current.delete(d.id)
+    );
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -39,6 +56,13 @@ export default function Documents() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => {
+    // Touch devices never fire hover, so warm the cache for whatever's on
+    // screen as soon as it renders too.
+    pageItems.forEach(prefetchShareLink);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageItems]);
 
   async function handleDelete(d: WebDocument) {
     if (!user) return;
@@ -66,7 +90,8 @@ export default function Documents() {
 
   async function handleShare(d: WebDocument) {
     try {
-      const url = await getShareLink(d.storagePath);
+      const cached = shareUrlCache.current.get(d.id);
+      const url = typeof cached === 'string' ? cached : await (cached ?? getShareLink(d.storagePath));
 
       // Opens the OS/browser share sheet (WhatsApp, Instagram, Mail, etc. —
       // whatever's installed) when available; falls back to copying the
@@ -162,6 +187,8 @@ export default function Documents() {
                     </button>
                     <button
                       onClick={() => handleShare(d)}
+                      onMouseEnter={() => prefetchShareLink(d)}
+                      onFocus={() => prefetchShareLink(d)}
                       title="Share"
                       className={`transition-colors p-1 ${copiedId === d.id ? 'text-tertiary' : 'text-on-surface-variant hover:text-primary'}`}
                     >
