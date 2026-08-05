@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext';
 import { deleteDocument, getDocumentBytes, getShareLink, listenDocuments } from './data';
 import type { WebDocument } from '../../types';
 import { StatusChip, timeAgo } from './ui';
+import { ShareMenu } from './ShareMenu';
 
 const PAGE_SIZE = 8;
 
@@ -14,13 +15,9 @@ export default function Documents() {
   const [status, setStatus] = useState('all');
   const [sort, setSort] = useState('date-desc');
   const [page, setPage] = useState(1);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  // navigator.share() must be called within the click's user-gesture window.
-  // Awaiting getShareLink() (a network round-trip) right before calling it
-  // can burn through that window and make share() silently fail, falling
-  // back to a clipboard copy with no share sheet. Pre-fetching the link on
-  // hover/focus means the click handler usually already has it cached, so
-  // share() fires immediately.
+  const [shareMenu, setShareMenu] = useState<{ doc: WebDocument; url: string; anchorRect: DOMRect } | null>(null);
+  // Pre-fetching the link on hover/render means it's already in hand by the
+  // time the user clicks Share, so the popover opens instantly.
   const shareUrlCache = useRef<Map<string, string | Promise<string>>>(new Map());
 
   function prefetchShareLink(d: WebDocument) {
@@ -88,28 +85,11 @@ export default function Documents() {
     }
   }
 
-  async function handleShare(d: WebDocument) {
+  async function handleShare(d: WebDocument, anchorRect: DOMRect) {
     try {
       const cached = shareUrlCache.current.get(d.id);
       const url = typeof cached === 'string' ? cached : await (cached ?? getShareLink(d.storagePath));
-
-      // Opens the OS/browser share sheet (WhatsApp, Instagram, Mail, etc. —
-      // whatever's installed) when available; falls back to copying the
-      // link otherwise. Mobile browsers support this near-universally;
-      // desktop support varies by browser.
-      if (navigator.share) {
-        try {
-          await navigator.share({ title: d.name, url });
-          return;
-        } catch (err: any) {
-          if (err?.name === 'AbortError') return; // user closed the share sheet
-          // fall through to clipboard copy below
-        }
-      }
-
-      await navigator.clipboard.writeText(url);
-      setCopiedId(d.id);
-      setTimeout(() => setCopiedId((id) => (id === d.id ? null : id)), 1500);
+      setShareMenu({ doc: d, url, anchorRect });
     } catch {
       alert('Could not create a share link. Check your internet connection and try again.');
     }
@@ -186,13 +166,13 @@ export default function Documents() {
                       <span className="material-symbols-outlined text-[18px]">download</span>
                     </button>
                     <button
-                      onClick={() => handleShare(d)}
+                      onClick={(e) => handleShare(d, e.currentTarget.getBoundingClientRect())}
                       onMouseEnter={() => prefetchShareLink(d)}
                       onFocus={() => prefetchShareLink(d)}
                       title="Share"
-                      className={`transition-colors p-1 ${copiedId === d.id ? 'text-tertiary' : 'text-on-surface-variant hover:text-primary'}`}
+                      className="text-on-surface-variant hover:text-primary transition-colors p-1"
                     >
-                      <span className="material-symbols-outlined text-[18px]">{copiedId === d.id ? 'check' : 'share'}</span>
+                      <span className="material-symbols-outlined text-[18px]">share</span>
                     </button>
                     <button onClick={() => handleDelete(d)} className="text-on-surface-variant hover:text-error transition-colors p-1">
                       <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -229,6 +209,15 @@ export default function Documents() {
           </div>
         </div>
       </section>
+
+      {shareMenu && (
+        <ShareMenu
+          url={shareMenu.url}
+          title={shareMenu.doc.name}
+          anchorRect={shareMenu.anchorRect}
+          onClose={() => setShareMenu(null)}
+        />
+      )}
     </div>
   );
 }
