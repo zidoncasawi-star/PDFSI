@@ -12,9 +12,9 @@ const NAV_ITEMS = [
   { key: 'ads', label: 'Ads', icon: 'ads_click' }
 ];
 
-export default function Sidebar({ active, onNavigate }: Props) {
+export function SidebarContent({ active, onNavigate }: Props) {
   return (
-    <aside className="bg-surface-container-low h-screen w-64 flex flex-col border-r border-outline-variant fixed left-0 top-0 z-40 hidden md:flex">
+    <>
       <div className="p-gutter flex items-center gap-3">
         <img src="/icon.png" alt="Sign Pdf" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
         <div className="flex flex-col">
@@ -51,6 +51,14 @@ export default function Sidebar({ active, onNavigate }: Props) {
           <span className="text-sm font-semibold">Connection</span>
         </button>
       </div>
+    </>
+  );
+}
+
+export default function Sidebar({ active, onNavigate }: Props) {
+  return (
+    <aside className="bg-surface-container-low h-screen w-64 flex-col border-r border-outline-variant fixed left-0 top-0 z-40 hidden md:flex">
+      <SidebarContent active={active} onNavigate={onNavigate} />
     </aside>
   );
 }

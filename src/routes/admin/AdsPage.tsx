@@ -34,7 +34,7 @@ function Field({ label, hint, value, onChange, placeholder }: { label: string; h
   );
 }
 
-export default function AdsPage() {
+export default function AdsPage({ onMenuClick }: { onMenuClick?: () => void }) {
   const [settings, setSettings] = useState<AdSettings>(EMPTY_AD_SETTINGS);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -56,7 +56,11 @@ export default function AdsPage() {
 
   return (
     <>
-      <Topbar title="Ads" subtitle="Ad network configuration for the web app, Windows app, and future phone app" />
+      <Topbar
+        title="Ads"
+        subtitle="Ad network configuration for the web app, Windows app, and future phone app"
+        onMenuClick={onMenuClick}
+      />
       <div className="p-6 lg:px-[6%] mx-auto w-full max-w-[900px] flex flex-col gap-6">
         <section className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm flex flex-col gap-4">
           <div>

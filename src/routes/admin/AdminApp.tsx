@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import Sidebar from '../../components/Sidebar';
+import Sidebar, { SidebarContent } from '../../components/Sidebar';
 import Topbar from '../../components/Topbar';
 import StatCard from '../../components/StatCard';
 import AdsPage from './AdsPage';
@@ -41,6 +41,7 @@ function StatusChip({ status }: { status: string }) {
 
 export default function AdminApp() {
   const [page, setPage] = useState('overview');
+  const [menuOpen, setMenuOpen] = useState(false);
   const [webUsers, setWebUsers] = useState<WebUserProfile[]>([]);
   const [webDocuments, setWebDocuments] = useState<WebUserDocument[]>([]);
   const [auditEntries, setAuditEntries] = useState<OwnedAuditEntry[]>([]);
@@ -118,10 +119,30 @@ export default function AdminApp() {
   return (
     <div className="min-h-screen flex">
       <Sidebar active={page} onNavigate={setPage} />
+
+      {menuOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setMenuOpen(false)} />
+          <aside className="relative bg-surface-container-low w-72 max-w-[80vw] h-full flex flex-col border-r border-outline-variant">
+            <button
+              onClick={() => setMenuOpen(false)}
+              className="absolute top-4 right-4 text-on-surface-variant hover:text-on-surface"
+            >
+              <span className="material-symbols-outlined">close</span>
+            </button>
+            <SidebarContent active={page} onNavigate={(p) => { setPage(p); setMenuOpen(false); }} />
+          </aside>
+        </div>
+      )}
+
       <main className="flex-1 md:ml-64 flex flex-col min-h-screen">
         {page === 'overview' && (
           <>
-            <Topbar title="Overview" subtitle="Live data from every signed-in user (desktop app + web app)" />
+            <Topbar
+              title="Overview"
+              subtitle="Live data from every signed-in user (desktop app + web app)"
+              onMenuClick={() => setMenuOpen(true)}
+            />
             <div className="p-6 lg:px-[6%] mx-auto w-full max-w-[1400px] flex flex-col gap-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard label="Total Users" value={webUsers.length} icon="group" tone="primary" />
@@ -146,7 +167,7 @@ export default function AdminApp() {
 
         {page === 'documents' && (
           <>
-            <Topbar title="Documents" subtitle="Across every signed-in user" />
+            <Topbar title="Documents" subtitle="Across every signed-in user" onMenuClick={() => setMenuOpen(true)} />
             <div className="p-6 lg:px-[6%] mx-auto w-full max-w-[1400px]">
               <DocumentsTable documents={webDocuments} userNameByUid={userNameByUid} />
             </div>
@@ -155,7 +176,7 @@ export default function AdminApp() {
 
         {page === 'webusers' && (
           <>
-            <Topbar title="Users" subtitle="Everyone signed up, from the desktop app or the web app" />
+            <Topbar title="Users" subtitle="Everyone signed up, from the desktop app or the web app" onMenuClick={() => setMenuOpen(true)} />
             <div className="p-6 lg:px-[6%] mx-auto w-full max-w-[1400px] grid grid-cols-1 md:grid-cols-2 gap-4">
               {webUsers.length === 0 && (
                 <p className="text-sm text-on-surface-variant">No users have signed up yet.</p>
@@ -185,7 +206,7 @@ export default function AdminApp() {
 
         {page === 'messages' && (
           <>
-            <Topbar title="Contact Messages" subtitle="Submissions from the public Contact us page" />
+            <Topbar title="Contact Messages" subtitle="Submissions from the public Contact us page" onMenuClick={() => setMenuOpen(true)} />
             <div className="p-6 lg:px-[6%] mx-auto w-full max-w-[1000px] flex flex-col gap-4">
               {messages.length === 0 && <p className="text-sm text-on-surface-variant">No messages yet.</p>}
               {messages.map((m) => (
@@ -206,7 +227,7 @@ export default function AdminApp() {
 
         {page === 'audit' && (
           <>
-            <Topbar title="Audit Logs" subtitle="Every signing action, across every user" />
+            <Topbar title="Audit Logs" subtitle="Every signing action, across every user" onMenuClick={() => setMenuOpen(true)} />
             <div className="p-6 lg:px-[6%] mx-auto w-full max-w-[1400px]">
               <section className="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden">
                 <AuditTable entries={auditEntries} userNameByUid={userNameByUid} />
@@ -215,11 +236,11 @@ export default function AdminApp() {
           </>
         )}
 
-        {page === 'ads' && <AdsPage />}
+        {page === 'ads' && <AdsPage onMenuClick={() => setMenuOpen(true)} />}
 
         {page === 'settings' && (
           <>
-            <Topbar title="Connection" subtitle="How this dashboard fits into the Sign Pdf project" />
+            <Topbar title="Connection" subtitle="How this dashboard fits into the Sign Pdf project" onMenuClick={() => setMenuOpen(true)} />
             <div className="p-6 lg:px-[6%] mx-auto w-full max-w-[800px] flex flex-col gap-4">
               <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-md shadow-sm flex flex-col gap-2">
                 <h2 className="text-lg font-semibold text-on-surface">Firebase project</h2>
