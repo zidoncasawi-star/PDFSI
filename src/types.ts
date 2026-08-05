@@ -1,86 +1,80 @@
-export type Language = 'ar' | 'en';
+export type DocStatus = 'draft' | 'pending' | 'completed';
 
-export interface NavItem {
-  id: string;
-  label: string;
-  href: string;
-}
-
-export interface FeatureItem {
-  id: string;
-  icon: string;
-  title: string;
-  description: string;
-  badge?: string;
-}
-
-export interface StepItem {
-  step: number;
-  title: string;
-  description: string;
-  icon: string;
-  detail: string;
-}
-
-export interface UseCase {
-  id: string;
-  title: string;
-  icon: string;
-  subtitle: string;
-  description: string;
-  benefits: string[];
-  docSampleName: string;
-}
-
-export interface PricingPlan {
+export interface DocRecord {
   id: string;
   name: string;
-  description: string;
-  priceMonthlySAR: number;
-  priceYearlySAR: number;
-  priceMonthlyUSD: number;
-  priceYearlyUSD: number;
-  popular?: boolean;
-  ctaText: string;
-  features: string[];
+  status: DocStatus;
+  createdAt: string;
+  updatedAt: string;
+  signedAt?: string | null;
 }
 
-export interface FaqItem {
+export interface AuditEntry {
   id: string;
-  category: string;
-  question: string;
-  answer: string;
+  docId: string;
+  docName: string;
+  action: string;
+  timestamp: string;
 }
 
-export interface SampleDocument {
-  id: string;
-  title: string;
-  category: string;
-  pages: number;
-  size: string;
-  previewContent: {
-    header: string;
-    body: string;
-    footer: string;
-  };
+export interface DeviceStats {
+  pending: number;
+  completed30d: number;
+  drafts: number;
+  total: number;
 }
 
-export interface SignatureField {
+export interface DeviceDoc {
+  userName: string;
+  stats: DeviceStats;
+  documents: DocRecord[];
+  auditLog: AuditEntry[];
+  updatedAt: unknown;
+}
+
+// ---------- /app (web signing app) ----------
+
+export type FieldType = 'signature' | 'initials' | 'date' | 'text';
+
+export interface Signatory {
   id: string;
-  type: 'signature' | 'name' | 'date' | 'stamp' | 'checkbox';
+  name: string;
+  color: string;
+}
+
+export interface FieldRatio {
   x: number;
   y: number;
-  value?: string;
-  signatureType?: 'drawn' | 'typed';
-  color?: string;
+  w: number;
+  h: number;
 }
 
-export interface Testimonial {
+export interface WebField {
+  id: string;
+  type: FieldType;
+  page: number;
+  signatoryId: string;
+  ratio: FieldRatio;
+  dataUrl?: string | null;
+  text?: string | null;
+}
+
+export interface WebDocument {
   id: string;
   name: string;
-  role: string;
-  company: string;
-  avatar: string;
-  quote: string;
-  rating: number;
+  status: DocStatus;
+  storagePath: string;
+  createdAt: string;
+  updatedAt: string;
+  signedAt?: string | null;
+  fields: WebField[];
+  signatories: Signatory[];
+}
+
+export interface WebTemplate {
+  id: string;
+  name: string;
+  fields: { type: FieldType; page: number; ratio: FieldRatio }[];
+  createdAt: string;
+  lastUsedAt: string;
 }

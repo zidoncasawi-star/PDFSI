@@ -1,0 +1,73 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        // Brand palette: red / dark navy / white / gray (matches windows_app).
+        'secondary-container': '#F3F4F6',
+        tertiary: '#4B5563',
+        'tertiary-container': '#111827',
+        'secondary-fixed-dim': '#9CA3AF',
+        'surface-container-highest': '#D1D5DB',
+        'surface-container': '#F3F4F6',
+        'on-tertiary-fixed-variant': '#1F2937',
+        'surface-container-low': '#F9FAFB',
+        'error-container': '#FEE2E2',
+        'on-surface': '#111827',
+        'on-secondary-container': '#111827',
+        'secondary-fixed': '#E5E7EB',
+        'on-tertiary-fixed': '#FFFFFF',
+        'on-background': '#111827',
+        'on-tertiary-container': '#FFFFFF',
+        'surface-container-lowest': '#FFFFFF',
+        'surface-tint': '#DC2626',
+        outline: '#9CA3AF',
+        'on-error': '#FFFFFF',
+        background: '#FFFFFF',
+        'primary-container': '#DC2626',
+        'surface-variant': '#E5E7EB',
+        'inverse-on-surface': '#F9FAFB',
+        'inverse-surface': '#111827',
+        'tertiary-fixed': '#E5E7EB',
+        surface: '#FFFFFF',
+        'on-primary-fixed': '#7F1D1D',
+        error: '#DC2626',
+        secondary: '#4B5563',
+        primary: '#DC2626',
+        'tertiary-fixed-dim': '#9CA3AF',
+        'surface-container-high': '#E5E7EB',
+        'primary-fixed-dim': '#F87171',
+        'on-secondary': '#FFFFFF',
+        'on-primary-container': '#FFFFFF',
+        'on-surface-variant': '#4B5563',
+        'on-secondary-fixed': '#111827',
+        'primary-fixed': '#FEE2E2',
+        'on-error-container': '#7F1D1D',
+        'surface-dim': '#E5E7EB',
+        'inverse-primary': '#F87171',
+        'on-tertiary': '#FFFFFF',
+        'on-primary-fixed-variant': '#991B1B',
+        'surface-bright': '#FFFFFF',
+        'on-secondary-fixed-variant': '#374151',
+        'outline-variant': '#E5E7EB',
+        'on-primary': '#FFFFFF'
+      },
+      borderRadius: { DEFAULT: '0.25rem', lg: '0.5rem', xl: '0.75rem', full: '9999px' },
+      spacing: {
+        lg: '40px',
+        md: '24px',
+        xs: '8px',
+        base: '4px',
+        gutter: '24px',
+        'margin-desktop': '48px',
+        xl: '64px',
+        'margin-mobile': '16px',
+        sm: '16px'
+      },
+      fontFamily: { sans: ['Inter', 'sans-serif'] }
+    }
+  },
+  plugins: []
+};

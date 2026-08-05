@@ -1,0 +1,15 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Each user's uploaded/signed PDFs live under users/{uid}/documents/*.
+    // Only the owning account can read or write its own files. The admin
+    // dashboard never needs the raw file bytes, only Firestore metadata, so
+    // admins are intentionally NOT granted storage access here.
+    match /users/{uid}/documents/{fileName} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

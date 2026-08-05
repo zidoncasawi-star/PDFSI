@@ -1,6 +1,6 @@
 {
-  "name": "PDF Signer",
-  "description": "منصة التوقيع الإلكتروني وتوقيع المستندات الرقمية - صفحات التعريف والخدمات قبل لوحة التحكم",
+  "name": "Sign Pdf",
+  "description": "منصة توقيع المستندات الإلكترونية Sign Pdf - صفحة تعريفية، تطبيق ويب للتوقيع (/app)، ولوحة إدارة (/admin) مرتبطة بتطبيق سطح المكتب عبر Firebase.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }
