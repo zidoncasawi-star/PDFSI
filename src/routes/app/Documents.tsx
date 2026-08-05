@@ -49,6 +49,21 @@ export default function Documents() {
   async function handleShare(d: WebDocument) {
     try {
       const url = await getShareLink(d.storagePath);
+
+      // Opens the OS/browser share sheet (WhatsApp, Instagram, Mail, etc. —
+      // whatever's installed) when available; falls back to copying the
+      // link otherwise. Mobile browsers support this near-universally;
+      // desktop support varies by browser.
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: d.name, url });
+          return;
+        } catch (err: any) {
+          if (err?.name === 'AbortError') return; // user closed the share sheet
+          // fall through to clipboard copy below
+        }
+      }
+
       await navigator.clipboard.writeText(url);
       setCopiedId(d.id);
       setTimeout(() => setCopiedId((id) => (id === d.id ? null : id)), 1500);
@@ -122,7 +137,7 @@ export default function Documents() {
                     </Link>
                     <button
                       onClick={() => handleShare(d)}
-                      title="Copy share link"
+                      title="Share"
                       className={`transition-colors p-1 ${copiedId === d.id ? 'text-tertiary' : 'text-on-surface-variant hover:text-primary'}`}
                     >
                       <span className="material-symbols-outlined text-[18px]">{copiedId === d.id ? 'check' : 'share'}</span>
