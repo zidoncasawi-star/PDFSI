@@ -12,6 +12,22 @@ export interface AdSettings {
   admobAppId: string;
   admobBannerAdUnitId: string;
   admobInterstitialAdUnitId: string;
+
+  // Interstitial ad shown in a modal before a download or "Finish & Sign"
+  // completes — see routes/app/InterstitialAd.tsx (web) and windows_app's
+  // assets/js/interstitial.js. Unlike the AdSense banner, the ad content
+  // itself can be AdSense, arbitrary HTML/script (e.g. another network's
+  // tag), or a plain clickable image — whatever the admin has on hand.
+  interstitialEnabledWeb: boolean;
+  interstitialEnabledWindows: boolean;
+  interstitialType: 'adsense' | 'html' | 'image';
+  interstitialAdsenseClientId: string;
+  interstitialAdsenseSlotId: string;
+  interstitialHtml: string;
+  interstitialImageUrl: string;
+  interstitialImageLink: string;
+  interstitialDurationMs: number;
+  interstitialMessage: string;
 }
 
 export const EMPTY_AD_SETTINGS: AdSettings = {
@@ -21,7 +37,18 @@ export const EMPTY_AD_SETTINGS: AdSettings = {
   adsenseEnabledWindows: false,
   admobAppId: '',
   admobBannerAdUnitId: '',
-  admobInterstitialAdUnitId: ''
+  admobInterstitialAdUnitId: '',
+
+  interstitialEnabledWeb: false,
+  interstitialEnabledWindows: false,
+  interstitialType: 'adsense',
+  interstitialAdsenseClientId: '',
+  interstitialAdsenseSlotId: '',
+  interstitialHtml: '',
+  interstitialImageUrl: '',
+  interstitialImageLink: '',
+  interstitialDurationMs: 4000,
+  interstitialMessage: 'Preparing your file…'
 };
 
 export function subscribeAdSettings(cb: (settings: AdSettings) => void) {

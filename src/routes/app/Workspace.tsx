@@ -16,6 +16,7 @@ import {
 } from './data';
 import { createSignatureSession, deleteSignatureSession, subscribeSignatureSession } from './signatureSession';
 import { isMobileOrTabletDevice } from './device';
+import { useInterstitial } from './useInterstitial';
 import type { FieldType, Signatory, WebDocument, WebField } from '../../types';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -61,6 +62,7 @@ export default function Workspace() {
   const templateId = searchParams.get('template');
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { runWithInterstitial, modal: interstitialModal } = useInterstitial();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
@@ -409,33 +411,35 @@ export default function Workspace() {
       return;
     }
 
-    const bytes = await getDocumentBytes(user.uid, doc.storagePath);
-    const pdfDoc = await PDFDocument.load(bytes);
-    const pages = pdfDoc.getPages();
-    const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    await runWithInterstitial(async () => {
+      const bytes = await getDocumentBytes(user.uid, doc.storagePath);
+      const pdfDoc = await PDFDocument.load(bytes);
+      const pages = pdfDoc.getPages();
+      const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-    for (const f of filled) {
-      const page = pages[f.page - 1];
-      if (!page) continue;
-      const { width: pw, height: ph } = page.getSize();
-      const xPt = f.ratio.x * pw;
-      const wPt = f.ratio.w * pw;
-      const hPt = f.ratio.h * ph;
-      const yPt = ph - f.ratio.y * ph - hPt;
+      for (const f of filled) {
+        const page = pages[f.page - 1];
+        if (!page) continue;
+        const { width: pw, height: ph } = page.getSize();
+        const xPt = f.ratio.x * pw;
+        const wPt = f.ratio.w * pw;
+        const hPt = f.ratio.h * ph;
+        const yPt = ph - f.ratio.y * ph - hPt;
 
-      if (f.type === 'signature' || f.type === 'initials') {
-        const pngImage = await pdfDoc.embedPng(f.dataUrl!);
-        page.drawImage(pngImage, { x: xPt, y: yPt, width: wPt, height: hPt });
-      } else {
-        const fontSize = Math.min(hPt * 0.6, 14);
-        page.drawText(f.text || '', { x: xPt + 4, y: yPt + (hPt - fontSize) / 2, size: fontSize, font: helvetica, color: rgb(0.07, 0.09, 0.15) });
+        if (f.type === 'signature' || f.type === 'initials') {
+          const pngImage = await pdfDoc.embedPng(f.dataUrl!);
+          page.drawImage(pngImage, { x: xPt, y: yPt, width: wPt, height: hPt });
+        } else {
+          const fontSize = Math.min(hPt * 0.6, 14);
+          page.drawText(f.text || '', { x: xPt + 4, y: yPt + (hPt - fontSize) / 2, size: fontSize, font: helvetica, color: rgb(0.07, 0.09, 0.15) });
+        }
       }
-    }
 
-    const outBytes = await pdfDoc.save();
-    const fieldsToSave: WebField[] = all.map(({ xPx, yPx, wPx, hPx, ...f }) => f);
-    await updateDocumentFields(user.uid, docId, fieldsToSave, signatories);
-    await completeSign(user.uid, docId, doc.storagePath, outBytes);
+      const outBytes = await pdfDoc.save();
+      const fieldsToSave: WebField[] = all.map(({ xPx, yPx, wPx, hPx, ...f }) => f);
+      await updateDocumentFields(user.uid, docId, fieldsToSave, signatories);
+      await completeSign(user.uid, docId, doc.storagePath, outBytes);
+    });
     navigate('/app/documents');
   }
 
@@ -713,6 +717,7 @@ export default function Workspace() {
           </div>
         </div>
       )}
+      {interstitialModal}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { deleteDocument, getDocumentBytes, getShareLink, listenDocuments } from 
 import type { WebDocument } from '../../types';
 import { StatusChip, timeAgo } from './ui';
 import { ShareMenu } from './ShareMenu';
+import { useInterstitial } from './useInterstitial';
 
 const PAGE_SIZE = 8;
 
@@ -19,6 +20,7 @@ export default function Documents() {
   // Pre-fetching the link on hover/render means it's already in hand by the
   // time the user clicks Share, so the popover opens instantly.
   const shareUrlCache = useRef<Map<string, string | Promise<string>>>(new Map());
+  const { runWithInterstitial, modal: interstitialModal } = useInterstitial();
 
   function prefetchShareLink(d: WebDocument) {
     if (shareUrlCache.current.has(d.id)) return;
@@ -70,16 +72,18 @@ export default function Documents() {
   async function handleDownload(d: WebDocument) {
     if (!user) return;
     try {
-      const bytes = await getDocumentBytes(user.uid, d.storagePath);
-      const blob = new Blob([bytes as BlobPart], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = d.status === 'completed' ? `Signed-${d.name}` : d.name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      await runWithInterstitial(async () => {
+        const bytes = await getDocumentBytes(user.uid, d.storagePath);
+        const blob = new Blob([bytes as BlobPart], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = d.status === 'completed' ? `Signed-${d.name}` : d.name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      });
     } catch {
       alert('Could not download this document. Check your internet connection and try again.');
     }
@@ -232,6 +236,7 @@ export default function Documents() {
           onClose={() => setShareMenu(null)}
         />
       )}
+      {interstitialModal}
     </div>
   );
 }
