@@ -35,7 +35,7 @@ export interface WebUserDocument extends WebDocument {
 }
 
 // collectionGroup query across every user's `documents` subcollection, so the
-// admin panel can see activity from all registered /app web users at once.
+// admin panel can see activity from all registered users (desktop + web) at once.
 export function subscribeAllWebDocuments(cb: (docs: WebUserDocument[]) => void) {
   if (!db) return () => {};
   return onSnapshot(collectionGroup(db, 'documents'), (snap) => {
@@ -46,5 +46,28 @@ export function subscribeAllWebDocuments(cb: (docs: WebUserDocument[]) => void) 
         ...(d.data() as Omit<WebDocument, 'id'>)
       }))
     );
+  });
+}
+
+export interface OwnedAuditEntry {
+  id: string;
+  ownerUid: string;
+  docId: string;
+  docName: string;
+  action: string;
+  timestamp: string;
+}
+
+// collectionGroup query across every user's `auditLog` subcollection.
+export function subscribeAllAuditEntries(cb: (entries: OwnedAuditEntry[]) => void) {
+  if (!db) return () => {};
+  return onSnapshot(collectionGroup(db, 'auditLog'), (snap) => {
+    const entries = snap.docs.map((d) => ({
+      id: d.id,
+      ownerUid: d.ref.parent.parent?.id || 'unknown',
+      ...(d.data() as Omit<OwnedAuditEntry, 'id' | 'ownerUid'>)
+    }));
+    entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    cb(entries);
   });
 }

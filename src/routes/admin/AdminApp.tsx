@@ -2,11 +2,17 @@ import { useEffect, useMemo, useState } from 'react';
 import Sidebar from '../../components/Sidebar';
 import Topbar from '../../components/Topbar';
 import StatCard from '../../components/StatCard';
-import { isFirebaseConfigured, subscribeToDevices } from '../../firebase';
-import { subscribeAllWebDocuments, subscribeContactMessages, subscribeWebUsers, type ContactMessage, type WebUserDocument, type WebUserProfile } from './data';
-import type { AuditEntry, DeviceDoc, DocRecord } from '../../types';
-
-type Device = DeviceDoc & { deviceId: string };
+import { isFirebaseConfigured } from '../../firebase';
+import {
+  subscribeAllAuditEntries,
+  subscribeAllWebDocuments,
+  subscribeContactMessages,
+  subscribeWebUsers,
+  type ContactMessage,
+  type OwnedAuditEntry,
+  type WebUserDocument,
+  type WebUserProfile
+} from './data';
 
 const statusStyles: Record<string, string> = {
   draft: 'bg-surface-container-highest text-on-surface-variant',
@@ -24,53 +30,40 @@ function StatusChip({ status }: { status: string }) {
 
 export default function AdminApp() {
   const [page, setPage] = useState('overview');
-  const [devices, setDevices] = useState<Device[]>([]);
   const [webUsers, setWebUsers] = useState<WebUserProfile[]>([]);
   const [webDocuments, setWebDocuments] = useState<WebUserDocument[]>([]);
+  const [auditEntries, setAuditEntries] = useState<OwnedAuditEntry[]>([]);
   const [messages, setMessages] = useState<ContactMessage[]>([]);
 
   useEffect(() => {
     if (!isFirebaseConfigured) return;
-    const unsubDevices = subscribeToDevices(setDevices);
     const unsubUsers = subscribeWebUsers(setWebUsers);
     const unsubDocs = subscribeAllWebDocuments(setWebDocuments);
+    const unsubAudit = subscribeAllAuditEntries(setAuditEntries);
     const unsubMessages = subscribeContactMessages(setMessages);
     return () => {
-      unsubDevices();
       unsubUsers();
       unsubDocs();
+      unsubAudit();
       unsubMessages();
     };
   }, []);
 
-  const allDocuments = useMemo(
-    () =>
-      devices.flatMap((d) =>
-        (d.documents || []).map((doc) => ({ ...doc, deviceId: d.deviceId, userName: d.userName }))
-      ),
-    [devices]
-  );
+  const userNameByUid = useMemo(() => {
+    const map: Record<string, string> = {};
+    webUsers.forEach((u) => { map[u.uid] = u.displayName || u.email; });
+    return map;
+  }, [webUsers]);
 
-  const allAudit = useMemo(
-    () =>
-      devices
-        .flatMap((d) => (d.auditLog || []).map((a) => ({ ...a, deviceId: d.deviceId, userName: d.userName })))
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
-    [devices]
-  );
-
-  const totals = useMemo(
-    () =>
-      devices.reduce(
-        (acc, d) => ({
-          pending: acc.pending + (d.stats?.pending || 0),
-          completed30d: acc.completed30d + (d.stats?.completed30d || 0),
-          drafts: acc.drafts + (d.stats?.drafts || 0)
-        }),
-        { pending: 0, completed30d: 0, drafts: 0 }
-      ),
-    [devices]
-  );
+  const totals = useMemo(() => {
+    const now = Date.now();
+    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+    return {
+      pending: webDocuments.filter((d) => d.status === 'pending').length,
+      completed30d: webDocuments.filter((d) => d.status === 'completed' && d.signedAt && now - new Date(d.signedAt).getTime() <= thirtyDays).length,
+      drafts: webDocuments.filter((d) => d.status === 'draft').length
+    };
+  }, [webDocuments]);
 
   if (!isFirebaseConfigured) {
     return (
@@ -94,7 +87,7 @@ export default function AdminApp() {
       <main className="flex-1 md:ml-64 flex flex-col min-h-screen">
         {page === 'overview' && (
           <>
-            <Topbar title="Overview" subtitle="Live data from the Sign Pdf desktop app and web app" />
+            <Topbar title="Overview" subtitle="Live data from every signed-in user (desktop app + web app)" />
             <div className="p-6 lg:px-[6%] mx-auto w-full max-w-[1400px] flex flex-col gap-6">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <StatCard label="Pending Signatures" value={totals.pending} icon="hourglass_empty" tone="tertiary" />
@@ -105,7 +98,7 @@ export default function AdminApp() {
                 <div className="p-4 border-b border-outline-variant">
                   <h2 className="text-lg font-semibold text-on-surface">Recent Activity</h2>
                 </div>
-                <AuditTable entries={allAudit.slice(0, 8)} />
+                <AuditTable entries={auditEntries.slice(0, 8)} userNameByUid={userNameByUid} />
               </section>
             </div>
           </>
@@ -113,46 +106,19 @@ export default function AdminApp() {
 
         {page === 'documents' && (
           <>
-            <Topbar title="Documents" subtitle="Across all connected devices" />
+            <Topbar title="Documents" subtitle="Across every signed-in user" />
             <div className="p-6 lg:px-[6%] mx-auto w-full max-w-[1400px]">
-              <DocumentsTable documents={allDocuments} />
-            </div>
-          </>
-        )}
-
-        {page === 'devices' && (
-          <>
-            <Topbar title="Devices" subtitle="Sign Pdf desktop installations linked to this project" />
-            <div className="p-6 lg:px-[6%] mx-auto w-full max-w-[1400px] grid grid-cols-1 md:grid-cols-2 gap-4">
-              {devices.length === 0 && (
-                <p className="text-sm text-on-surface-variant">
-                  No devices connected yet. Enable Firebase sync in the desktop app's Settings page.
-                </p>
-              )}
-              {devices.map((d) => (
-                <div key={d.deviceId} className="bg-surface-container-lowest border border-outline-variant rounded-xl p-md shadow-sm">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-9 h-9 rounded-full bg-primary-container/20 flex items-center justify-center text-primary">
-                      <span className="material-symbols-outlined">computer</span>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-on-surface text-sm">{d.userName || 'Unnamed device'}</p>
-                      <p className="text-xs text-on-surface-variant">{d.deviceId}</p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-on-surface-variant">{(d.documents || []).length} documents synced</p>
-                </div>
-              ))}
+              <DocumentsTable documents={webDocuments} userNameByUid={userNameByUid} />
             </div>
           </>
         )}
 
         {page === 'webusers' && (
           <>
-            <Topbar title="Web App Users" subtitle="Everyone signed up at /app, with their documents" />
+            <Topbar title="Users" subtitle="Everyone signed up, from the desktop app or the web app" />
             <div className="p-6 lg:px-[6%] mx-auto w-full max-w-[1400px] grid grid-cols-1 md:grid-cols-2 gap-4">
               {webUsers.length === 0 && (
-                <p className="text-sm text-on-surface-variant">No web app users have signed up yet.</p>
+                <p className="text-sm text-on-surface-variant">No users have signed up yet.</p>
               )}
               {webUsers.map((u) => {
                 const docs = webDocuments.filter((d) => d.ownerUid === u.uid);
@@ -200,10 +166,10 @@ export default function AdminApp() {
 
         {page === 'audit' && (
           <>
-            <Topbar title="Audit Logs" subtitle="Every signing action, across every device" />
+            <Topbar title="Audit Logs" subtitle="Every signing action, across every user" />
             <div className="p-6 lg:px-[6%] mx-auto w-full max-w-[1400px]">
               <section className="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden">
-                <AuditTable entries={allAudit} />
+                <AuditTable entries={auditEntries} userNameByUid={userNameByUid} />
               </section>
             </div>
           </>
@@ -211,14 +177,15 @@ export default function AdminApp() {
 
         {page === 'settings' && (
           <>
-            <Topbar title="Connection" subtitle="How this dashboard links to the desktop app" />
+            <Topbar title="Connection" subtitle="How this dashboard fits into the Sign Pdf project" />
             <div className="p-6 lg:px-[6%] mx-auto w-full max-w-[800px] flex flex-col gap-4">
               <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-md shadow-sm flex flex-col gap-2">
                 <h2 className="text-lg font-semibold text-on-surface">Firebase project</h2>
                 <p className="text-sm text-on-surface-variant">
-                  This dashboard reads the <code>lexissign_devices</code> Firestore collection. Open the Sign Pdf
-                  desktop app, go to <strong>Settings</strong>, paste the same Firebase config used here, and enable
-                  sync. New devices will appear automatically under "Devices".
+                  This dashboard reads the <code>users/&#123;uid&#125;</code> collection tree, written to by both
+                  the desktop app and the web app — every user must be signed in on both, there is no offline or
+                  anonymous mode. To make an account an admin, add a document at <code>admins/&#123;uid&#125;</code>{' '}
+                  in the Firebase console (see the project README).
                 </p>
               </div>
             </div>
@@ -229,7 +196,7 @@ export default function AdminApp() {
   );
 }
 
-function DocumentsTable({ documents }: { documents: (DocRecord & { deviceId: string; userName: string })[] }) {
+function DocumentsTable({ documents, userNameByUid }: { documents: WebUserDocument[]; userNameByUid: Record<string, string> }) {
   return (
     <section className="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -246,19 +213,19 @@ function DocumentsTable({ documents }: { documents: (DocRecord & { deviceId: str
             {documents.length === 0 && (
               <tr>
                 <td colSpan={4} className="p-6 text-center text-on-surface-variant">
-                  No documents synced yet.
+                  No documents yet.
                 </td>
               </tr>
             )}
             {documents.map((d) => (
-              <tr key={`${d.deviceId}-${d.id}`} className="border-b border-outline-variant hover:bg-surface-container-low transition-colors">
+              <tr key={`${d.ownerUid}-${d.id}`} className="border-b border-outline-variant hover:bg-surface-container-low transition-colors">
                 <td className="p-4 flex items-center gap-3">
                   <div className="w-8 h-8 rounded bg-primary-container/20 flex items-center justify-center text-primary">
                     <span className="material-symbols-outlined text-[18px]">description</span>
                   </div>
                   <span className="font-medium text-on-surface">{d.name}</span>
                 </td>
-                <td className="p-4 text-on-surface-variant">{d.userName}</td>
+                <td className="p-4 text-on-surface-variant">{userNameByUid[d.ownerUid] || d.ownerUid}</td>
                 <td className="p-4">
                   <StatusChip status={d.status} />
                 </td>
@@ -272,15 +239,15 @@ function DocumentsTable({ documents }: { documents: (DocRecord & { deviceId: str
   );
 }
 
-function AuditTable({ entries }: { entries: (AuditEntry & { deviceId: string; userName: string })[] }) {
+function AuditTable({ entries, userNameByUid }: { entries: OwnedAuditEntry[]; userNameByUid: Record<string, string> }) {
   return (
     <div className="divide-y divide-outline-variant">
       {entries.length === 0 && <p className="p-6 text-center text-on-surface-variant text-sm">No activity yet.</p>}
       {entries.map((e) => (
-        <div key={`${e.deviceId}-${e.id}`} className="p-4 flex items-center justify-between gap-4">
+        <div key={`${e.ownerUid}-${e.id}`} className="p-4 flex items-center justify-between gap-4">
           <div className="flex flex-col">
             <span className="text-sm text-on-surface">
-              <strong>{e.userName}</strong> — {e.action}
+              <strong>{userNameByUid[e.ownerUid] || e.ownerUid}</strong> — {e.action}
             </span>
             <span className="text-xs text-on-surface-variant">{e.docName}</span>
           </div>

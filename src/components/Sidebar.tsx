@@ -6,8 +6,7 @@ interface Props {
 const NAV_ITEMS = [
   { key: 'overview', label: 'Dashboard', icon: 'dashboard' },
   { key: 'documents', label: 'Documents', icon: 'description' },
-  { key: 'devices', label: 'Desktop Devices', icon: 'devices' },
-  { key: 'webusers', label: 'Web App Users', icon: 'group' },
+  { key: 'webusers', label: 'Users', icon: 'group' },
   { key: 'messages', label: 'Contact Messages', icon: 'mail' },
   { key: 'audit', label: 'Audit Logs', icon: 'history' }
 ];
