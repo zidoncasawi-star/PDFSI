@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-import { deleteDocument, listenDocuments } from './data';
+import { deleteDocument, getShareLink, listenDocuments } from './data';
 import type { WebDocument } from '../../types';
 import { StatusChip, timeAgo } from './ui';
 
@@ -14,6 +14,7 @@ export default function Documents() {
   const [status, setStatus] = useState('all');
   const [sort, setSort] = useState('date-desc');
   const [page, setPage] = useState(1);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -43,6 +44,17 @@ export default function Documents() {
     if (!user) return;
     if (!confirm(`Delete "${d.name}" permanently?`)) return;
     await deleteDocument(user.uid, d);
+  }
+
+  async function handleShare(d: WebDocument) {
+    try {
+      const url = await getShareLink(d.storagePath);
+      await navigator.clipboard.writeText(url);
+      setCopiedId(d.id);
+      setTimeout(() => setCopiedId((id) => (id === d.id ? null : id)), 1500);
+    } catch {
+      alert('Could not create a share link. Check your internet connection and try again.');
+    }
   }
 
   return (
@@ -108,6 +120,13 @@ export default function Documents() {
                     >
                       {d.status === 'completed' ? 'Open' : d.status === 'draft' ? 'Prepare' : 'Continue'}
                     </Link>
+                    <button
+                      onClick={() => handleShare(d)}
+                      title="Copy share link"
+                      className={`transition-colors p-1 ${copiedId === d.id ? 'text-tertiary' : 'text-on-surface-variant hover:text-primary'}`}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">{copiedId === d.id ? 'check' : 'share'}</span>
+                    </button>
                     <button onClick={() => handleDelete(d)} className="text-on-surface-variant hover:text-error transition-colors p-1">
                       <span className="material-symbols-outlined text-[18px]">delete</span>
                     </button>

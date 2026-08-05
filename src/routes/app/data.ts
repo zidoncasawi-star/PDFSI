@@ -10,7 +10,7 @@ import {
   orderBy,
   serverTimestamp
 } from 'firebase/firestore';
-import { ref, uploadBytes, getBytes, deleteObject } from 'firebase/storage';
+import { ref, uploadBytes, getBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../../firebase';
 import type { AuditEntry, FieldType, FieldRatio, Signatory, WebDocument, WebField, WebTemplate } from '../../types';
 
@@ -32,6 +32,15 @@ export async function getDocumentBytes(uid: string, storagePath: string): Promis
   requireBackend();
   const bytes = await getBytes(ref(storage!, storagePath));
   return new Uint8Array(bytes);
+}
+
+// A Firebase Storage download URL carries its own access token, so whoever
+// has this link can fetch that one file without signing in — that's the
+// point of a "share" link, but treat it like any other secret you'd paste
+// into an email.
+export async function getShareLink(storagePath: string): Promise<string> {
+  requireBackend();
+  return getDownloadURL(ref(storage!, storagePath));
 }
 
 export async function uploadDocument(uid: string, file: File): Promise<WebDocument> {
