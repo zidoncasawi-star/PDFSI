@@ -59,6 +59,20 @@ export default function Download() {
         </p>
       </section>
 
+      <section className="px-6 md:px-12 pb-16">
+        <div className="max-w-3xl mx-auto rounded-xl overflow-hidden shadow-lg border border-outline-variant bg-black">
+          <video
+            src="/intro.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+            controls
+            className="w-full h-auto block"
+          />
+        </div>
+      </section>
+
       <section className="px-6 md:px-12 pb-4">
         <div className="max-w-4xl mx-auto flex flex-col gap-4 text-center">
           <h2 className="text-2xl md:text-3xl font-bold text-on-surface">A free PDF signature app for Windows</h2>
