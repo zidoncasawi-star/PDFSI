@@ -89,6 +89,20 @@ export default function Documents() {
     try {
       const cached = shareUrlCache.current.get(d.id);
       const url = typeof cached === 'string' ? cached : await (cached ?? getShareLink(d.storagePath));
+
+      // Prefer the browser/OS's own native share panel (e.g. Edge on
+      // Windows opens the same Share flyout as any other app). Only fall
+      // back to our own popover when navigator.share isn't available at
+      // all, or the browser refuses the call.
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: d.name, url });
+          return;
+        } catch (err: any) {
+          if (err?.name === 'AbortError') return; // user closed the native panel
+        }
+      }
+
       setShareMenu({ doc: d, url, anchorRect });
     } catch {
       alert('Could not create a share link. Check your internet connection and try again.');

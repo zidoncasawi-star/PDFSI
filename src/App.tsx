@@ -21,6 +21,7 @@ import Upload from './routes/app/Upload';
 import Workspace from './routes/app/Workspace';
 import SettingsPage from './routes/app/SettingsPage';
 import MobileSign from './routes/app/MobileSign';
+import Share from './routes/app/Share';
 
 export default function App() {
   return (
@@ -49,6 +50,7 @@ export default function App() {
 
           <Route path="/app/login" element={<Login />} />
           <Route path="/app/mobile-sign/:sessionId" element={<MobileSign />} />
+          <Route path="/app/share" element={<Share />} />
           <Route
             path="/app"
             element={
