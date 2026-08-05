@@ -69,14 +69,21 @@ function AdContent({ settings }: { settings: AdSettings }) {
   return null;
 }
 
-export function InterstitialAd({ settings }: { settings: AdSettings }) {
+export function InterstitialAd({ settings, onProceed }: { settings: AdSettings; onProceed: () => void }) {
   const [progress, setProgress] = useState(0);
+  const [ready, setReady] = useState(false);
+  const [working, setWorking] = useState(false);
 
   useEffect(() => {
     const start = Date.now();
     const duration = settings.interstitialDurationMs || 4000;
     const id = setInterval(() => {
-      setProgress(Math.min(100, ((Date.now() - start) / duration) * 100));
+      const pct = Math.min(100, ((Date.now() - start) / duration) * 100);
+      setProgress(pct);
+      if (pct >= 100) {
+        clearInterval(id);
+        setReady(true);
+      }
     }, 100);
     return () => clearInterval(id);
   }, [settings.interstitialDurationMs]);
@@ -87,12 +94,24 @@ export function InterstitialAd({ settings }: { settings: AdSettings }) {
         <div className="w-full flex items-center justify-center min-h-[100px]">
           <AdContent settings={settings} />
         </div>
-        <div className="w-full flex flex-col gap-2">
-          <p className="text-sm text-on-surface text-center">{settings.interstitialMessage || 'Preparing your file…'}</p>
-          <div className="w-full h-1.5 rounded-full bg-surface-container-high overflow-hidden">
-            <div className="h-full bg-primary transition-[width] duration-100 ease-linear" style={{ width: `${progress}%` }} />
+
+        {!ready ? (
+          <div className="w-full flex flex-col gap-2">
+            <p className="text-sm text-on-surface text-center">{settings.interstitialMessage || 'Preparing your file…'}</p>
+            <div className="w-full h-1.5 rounded-full bg-surface-container-high overflow-hidden">
+              <div className="h-full bg-primary transition-[width] duration-100 ease-linear" style={{ width: `${progress}%` }} />
+            </div>
           </div>
-        </div>
+        ) : (
+          <button
+            onClick={() => { setWorking(true); onProceed(); }}
+            disabled={working}
+            className="w-full bg-primary text-on-primary font-semibold px-6 py-3 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            <span className="material-symbols-outlined">download</span>
+            {working ? 'Please wait…' : 'Download'}
+          </button>
+        )}
       </div>
     </div>
   );
