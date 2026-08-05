@@ -3,6 +3,8 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
   updateProfile,
   signOut,
   type User
@@ -15,6 +17,7 @@ interface AuthContextValue {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -57,6 +60,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           serverCreatedAt: serverTimestamp()
         });
       }
+    },
+    async loginWithGoogle() {
+      if (!auth || !db) throw new Error('Firebase is not configured.');
+      const cred = await signInWithPopup(auth, new GoogleAuthProvider());
+      // Upsert (merge) rather than overwrite, in case this account already has a profile.
+      await setDoc(
+        doc(db, 'users', cred.user.uid),
+        {
+          email: cred.user.email,
+          displayName: cred.user.displayName || null,
+          createdAt: new Date().toISOString(),
+          serverCreatedAt: serverTimestamp()
+        },
+        { merge: true }
+      );
     },
     async logout() {
       if (!auth) return;
