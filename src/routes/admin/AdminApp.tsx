@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Sidebar from '../../components/Sidebar';
 import Topbar from '../../components/Topbar';
 import StatCard from '../../components/StatCard';
+import AdsPage from './AdsPage';
 import { isFirebaseConfigured } from '../../firebase';
 import {
   subscribeAllAuditEntries,
@@ -213,6 +214,8 @@ export default function AdminApp() {
             </div>
           </>
         )}
+
+        {page === 'ads' && <AdsPage />}
 
         {page === 'settings' && (
           <>

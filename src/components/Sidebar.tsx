@@ -8,7 +8,8 @@ const NAV_ITEMS = [
   { key: 'documents', label: 'Documents', icon: 'description' },
   { key: 'webusers', label: 'Users', icon: 'group' },
   { key: 'messages', label: 'Contact Messages', icon: 'mail' },
-  { key: 'audit', label: 'Audit Logs', icon: 'history' }
+  { key: 'audit', label: 'Audit Logs', icon: 'history' },
+  { key: 'ads', label: 'Ads', icon: 'ads_click' }
 ];
 
 export default function Sidebar({ active, onNavigate }: Props) {
