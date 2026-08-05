@@ -41,6 +41,25 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Ephemeral "sign on your phone" handoff: the desktop/web app (signed
+    // in) creates a session with an unguessable random ID and shows it as a
+    // QR code; the phone that scans it — deliberately NOT signed in, to
+    // keep that flow frictionless — draws a signature and flips the same
+    // session from pending -> completed. The random ID acts as a one-time
+    // capability token, so no further auth is required for that single
+    // state transition.
+    match /signatureSessions/{sessionId} {
+      allow create: if request.auth != null &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.createdBy == request.auth.uid;
+      allow read: if request.auth != null && request.auth.uid == resource.data.createdBy;
+      allow update: if resource.data.status == 'pending' &&
+        request.resource.data.status == 'completed' &&
+        request.resource.data.dataUrl is string &&
+        request.resource.data.createdBy == resource.data.createdBy;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

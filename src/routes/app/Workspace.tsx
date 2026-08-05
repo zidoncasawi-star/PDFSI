@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import QRCode from 'qrcode';
 import { useAuth } from './AuthContext';
 import {
   completeSign,
@@ -13,6 +14,7 @@ import {
   touchTemplate,
   updateDocumentFields
 } from './data';
+import { createSignatureSession, deleteSignatureSession, subscribeSignatureSession } from './signatureSession';
 import type { FieldType, Signatory, WebDocument, WebField } from '../../types';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -63,10 +65,12 @@ export default function Workspace() {
   const [activeSignatoryId, setActiveSignatoryId] = useState<string>('');
   const [placingType, setPlacingType] = useState<FieldType | null>(null);
   const [modalFieldId, setModalFieldId] = useState<string | null>(null);
-  const [modalTab, setModalTab] = useState<'draw' | 'type' | 'upload'>('draw');
+  const [modalTab, setModalTab] = useState<'draw' | 'type' | 'upload' | 'qr'>('draw');
   const [typedName, setTypedName] = useState('');
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [qrImage, setQrImage] = useState<string | null>(null);
+  const qrSessionIdRef = useRef<string | null>(null);
 
   const drawCanvasRef = useRef<HTMLCanvasElement>(null);
   const drawingRef = useRef(false);
@@ -283,6 +287,44 @@ export default function Workspace() {
     const c = drawCanvasRef.current!;
     c.getContext('2d')!.clearRect(0, 0, c.width, c.height);
   }
+
+  // ---------- QR "sign on your phone" tab ----------
+  useEffect(() => {
+    if (!modalFieldId || modalTab !== 'qr' || !user) return;
+    let cancelled = false;
+    let unsubscribe: (() => void) | null = null;
+
+    (async () => {
+      const sessionId = await createSignatureSession(user.uid);
+      if (cancelled) {
+        deleteSignatureSession(sessionId);
+        return;
+      }
+      qrSessionIdRef.current = sessionId;
+      const url = `${window.location.origin}/app/mobile-sign/${sessionId}`;
+      const png = await QRCode.toDataURL(url, { margin: 1, width: 260 });
+      if (cancelled) return;
+      setQrImage(png);
+
+      unsubscribe = subscribeSignatureSession(sessionId, (session) => {
+        if (session?.status === 'completed' && session.dataUrl) {
+          updateField(modalFieldId, { dataUrl: session.dataUrl });
+          setModalFieldId(null);
+        }
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+      if (qrSessionIdRef.current) {
+        deleteSignatureSession(qrSessionIdRef.current);
+        qrSessionIdRef.current = null;
+      }
+      setQrImage(null);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalFieldId, modalTab, user]);
 
   function saveSignatureToField() {
     if (!modalFieldId) return;
@@ -574,13 +616,18 @@ export default function Workspace() {
             </div>
 
             <div className="flex gap-2 border-b border-outline-variant">
-              {(['draw', 'type', 'upload'] as const).map((tab) => (
+              {([
+                ['draw', 'Draw'],
+                ['type', 'Type'],
+                ['upload', 'Upload'],
+                ['qr', 'Scan QR']
+              ] as const).map(([tab, label]) => (
                 <button
                   key={tab}
                   onClick={() => setModalTab(tab)}
                   className={`px-3 py-2 text-sm font-semibold border-b-2 ${modalTab === tab ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant'}`}
                 >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  {label}
                 </button>
               ))}
             </div>
@@ -635,9 +682,27 @@ export default function Workspace() {
               </div>
             )}
 
+            {modalTab === 'qr' && (
+              <div className="flex flex-col items-center gap-3 py-2">
+                {qrImage ? (
+                  <img src={qrImage} alt="Scan to sign on your phone" className="w-[220px] h-[220px]" />
+                ) : (
+                  <div className="w-[220px] h-[220px] flex items-center justify-center">
+                    <span className="material-symbols-outlined text-primary text-3xl animate-spin">progress_activity</span>
+                  </div>
+                )}
+                <p className="text-sm text-on-surface-variant text-center max-w-[320px]">
+                  Scan this with your phone's camera to draw your signature on a touchscreen — it'll appear here
+                  automatically, no app or sign-in needed on your phone.
+                </p>
+              </div>
+            )}
+
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setModalFieldId(null)} className="px-4 py-2 rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-surface-container-high">Cancel</button>
-              <button onClick={saveSignatureToField} className="px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-on-primary hover:opacity-90">Use this signature</button>
+              {modalTab !== 'qr' && (
+                <button onClick={saveSignatureToField} className="px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-on-primary hover:opacity-90">Use this signature</button>
+              )}
             </div>
           </div>
         </div>

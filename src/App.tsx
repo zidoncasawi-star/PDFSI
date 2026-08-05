@@ -20,6 +20,7 @@ import Templates from './routes/app/Templates';
 import Upload from './routes/app/Upload';
 import Workspace from './routes/app/Workspace';
 import SettingsPage from './routes/app/SettingsPage';
+import MobileSign from './routes/app/MobileSign';
 
 export default function App() {
   return (
@@ -47,6 +48,7 @@ export default function App() {
           />
 
           <Route path="/app/login" element={<Login />} />
+          <Route path="/app/mobile-sign/:sessionId" element={<MobileSign />} />
           <Route
             path="/app"
             element={
