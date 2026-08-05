@@ -11,6 +11,7 @@ export interface AdSettings {
   // mobile build, which doesn't exist in this project yet.
   admobAppId: string;
   admobBannerAdUnitId: string;
+  admobInterstitialAdUnitId: string;
 }
 
 export const EMPTY_AD_SETTINGS: AdSettings = {
@@ -19,7 +20,8 @@ export const EMPTY_AD_SETTINGS: AdSettings = {
   adsenseEnabledWeb: false,
   adsenseEnabledWindows: false,
   admobAppId: '',
-  admobBannerAdUnitId: ''
+  admobBannerAdUnitId: '',
+  admobInterstitialAdUnitId: ''
 };
 
 export function subscribeAdSettings(cb: (settings: AdSettings) => void) {

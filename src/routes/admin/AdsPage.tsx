@@ -118,6 +118,12 @@ export default function AdsPage() {
             onChange={(v) => setSettings((s) => ({ ...s, admobBannerAdUnitId: v }))}
             placeholder="ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX"
           />
+          <Field
+            label="Interstitial ad unit ID"
+            value={settings.admobInterstitialAdUnitId}
+            onChange={(v) => setSettings((s) => ({ ...s, admobInterstitialAdUnitId: v }))}
+            placeholder="ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX"
+          />
         </section>
 
         <div className="flex items-center gap-3">

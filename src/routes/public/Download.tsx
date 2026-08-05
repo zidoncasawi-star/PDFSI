@@ -64,6 +64,7 @@ export default function Download() {
 
         <a
           href={DOWNLOAD_URL}
+          onClick={trackDownloadClick}
           className="bg-primary text-on-primary font-semibold px-8 py-4 rounded-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-lg"
         >
           <span className="material-symbols-outlined">download</span>
