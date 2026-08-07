@@ -3,9 +3,7 @@ import { doc, increment, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import Seo from './Seo';
 
-// TODO: point this at the real installer once it's hosted somewhere public
-// (e.g. a GitHub Releases asset on the windows_app repo, or your own CDN).
-const DOWNLOAD_URL = 'https://github.com/zidoncasawi-star/PDFSI/releases/latest';
+const DOWNLOAD_URL = 'https://github.com/zidoncasawi-star/PDFSI/releases/download/1.0.1/Sign.Pdf.Setup.1.0.1.exe';
 
 const STEPS = [
   { icon: 'download', title: 'Download the installer', body: 'Get the free Sign Pdf setup file for Windows 10 and 11 (64-bit).' },

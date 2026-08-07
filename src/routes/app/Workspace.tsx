@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
@@ -24,11 +24,10 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 // Computed once per page load — device type doesn't change mid-session.
 const SHOW_QR_TAB = !isMobileOrTabletDevice();
 
-const MODAL_TABS: Array<['draw' | 'type' | 'upload' | 'qr', string]> = [
+const MODAL_TABS: Array<['draw' | 'type' | 'upload', string]> = [
   ['draw', 'Draw'],
   ['type', 'Type'],
-  ['upload', 'Upload'],
-  ['qr', 'Scan QR']
+  ['upload', 'Upload']
 ];
 
 const SIGNATORY_COLORS = ['#DC2626', '#111827', '#4B5563', '#8a5cf6', '#c2410c'];
@@ -73,12 +72,14 @@ export default function Workspace() {
   const [doc, setDoc] = useState<WebDocument | null>(null);
   const [numPages, setNumPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
+  const [scale, setScale] = useState(1.4);
   const [fieldsByPage, setFieldsByPage] = useState<Record<number, UiField[]>>({});
+  const historyRef = useRef<Record<number, UiField[]>[]>([]);
   const [signatories, setSignatories] = useState<Signatory[]>([]);
   const [activeSignatoryId, setActiveSignatoryId] = useState<string>('');
   const [placingType, setPlacingType] = useState<FieldType | null>(null);
   const [modalFieldId, setModalFieldId] = useState<string | null>(null);
-  const [modalTab, setModalTab] = useState<'draw' | 'type' | 'upload' | 'qr'>('draw');
+  const [modalTab, setModalTab] = useState<'draw' | 'type' | 'upload'>('draw');
   const [typedName, setTypedName] = useState('');
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -162,7 +163,7 @@ export default function Workspace() {
 
     (async () => {
       const page = await pdfDocRef.current!.getPage(currentPage);
-      const viewport = page.getViewport({ scale: 1.4 });
+      const viewport = page.getViewport({ scale });
       const canvas = canvasRef.current!;
       const ctx = canvas.getContext('2d')!;
       canvas.width = viewport.width;
@@ -188,9 +189,67 @@ export default function Workspace() {
     })();
 
     return () => { cancelled = true; };
-  }, [currentPage, numPages]);
+  }, [currentPage, numPages, scale]);
 
   const currentFields = fieldsByPage[currentPage] || [];
+
+  function snapshotHistory() {
+    historyRef.current.push(JSON.parse(JSON.stringify(fieldsByPage)));
+    if (historyRef.current.length > 50) historyRef.current.shift();
+  }
+
+  const undo = useCallback(() => {
+    const prev = historyRef.current.pop();
+    if (prev) setFieldsByPage(prev);
+  }, []);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        undo();
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [undo]);
+
+  function zoomIn() {
+    setScale((s) => Math.min(3, Math.round((s + 0.2) * 10) / 10));
+  }
+  function zoomOut() {
+    setScale((s) => Math.max(0.6, Math.round((s - 0.2) * 10) / 10));
+  }
+
+  function applyFieldToAllPages(field: UiField) {
+    const size = pageSizesRef.current[field.page];
+    if (!size) return;
+    snapshotHistory();
+    const ratio = { x: field.xPx / size.width, y: field.yPx / size.height, w: field.wPx / size.width, h: field.hPx / size.height };
+    setFieldsByPage((prev) => {
+      const next = { ...prev };
+      for (let p = 1; p <= numPages; p++) {
+        if (p === field.page) continue;
+        next[p] = [
+          ...(next[p] || []),
+          {
+            id: crypto.randomUUID(),
+            type: field.type,
+            page: p,
+            signatoryId: field.signatoryId,
+            ratio,
+            dataUrl: field.dataUrl,
+            text: field.text,
+            xPx: 0,
+            yPx: 0,
+            wPx: 0,
+            hPx: 0
+          }
+        ];
+      }
+      return next;
+    });
+  }
 
   function updateField(fieldId: string, patch: Partial<UiField>) {
     setFieldsByPage((prev) => ({
@@ -200,12 +259,14 @@ export default function Workspace() {
   }
 
   function removeField(fieldId: string) {
+    snapshotHistory();
     setFieldsByPage((prev) => ({ ...prev, [currentPage]: (prev[currentPage] || []).filter((f) => f.id !== fieldId) }));
   }
 
   function handleCanvasClick(e: ReactMouseEvent<HTMLDivElement>) {
     if (!placingType) return;
     if ((e.target as HTMLElement).closest('.field-box')) return;
+    snapshotHistory();
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -237,6 +298,7 @@ export default function Workspace() {
   function onFieldMouseDown(e: ReactMouseEvent, field: UiField, mode: 'move' | 'resize') {
     e.stopPropagation();
     e.preventDefault();
+    snapshotHistory();
     dragState.current = { fieldId: field.id, mode, startX: e.clientX, startY: e.clientY, origX: field.xPx, origY: field.yPx, origW: field.wPx, origH: field.hPx };
     window.addEventListener('mousemove', onDragMove);
     window.addEventListener('mouseup', onDragEnd);
@@ -301,9 +363,9 @@ export default function Workspace() {
     c.getContext('2d')!.clearRect(0, 0, c.width, c.height);
   }
 
-  // ---------- QR "sign on your phone" tab ----------
+  // ---------- QR "sign on your phone" panel ----------
   useEffect(() => {
-    if (!modalFieldId || modalTab !== 'qr' || !user || !SHOW_QR_TAB) return;
+    if (!modalFieldId || !user || !SHOW_QR_TAB) return;
     let cancelled = false;
     let unsubscribe: (() => void) | null = null;
 
@@ -337,7 +399,7 @@ export default function Workspace() {
       setQrImage(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modalFieldId, modalTab, user]);
+  }, [modalFieldId, user]);
 
   function saveSignatureToField() {
     if (!modalFieldId) return;
@@ -359,6 +421,7 @@ export default function Workspace() {
       dataUrl = uploadPreview;
     }
     if (!dataUrl) return;
+    snapshotHistory();
     updateField(modalFieldId, { dataUrl });
     setModalFieldId(null);
   }
@@ -474,6 +537,18 @@ export default function Workspace() {
             </button>
           </div>
           <span className="text-sm font-semibold text-on-surface truncate max-w-[300px]">{doc.name}</span>
+          <div className="flex items-center gap-1">
+            <button onClick={zoomOut} disabled={scale <= 0.6} title="Zoom out" className="p-1 rounded hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30">
+              <span className="material-symbols-outlined text-[20px]">zoom_out</span>
+            </button>
+            <span className="text-xs text-on-surface-variant w-10 text-center">{Math.round((scale / 1.4) * 100)}%</span>
+            <button onClick={zoomIn} disabled={scale >= 3} title="Zoom in" className="p-1 rounded hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30">
+              <span className="material-symbols-outlined text-[20px]">zoom_in</span>
+            </button>
+            <button onClick={undo} disabled={historyRef.current.length === 0} title="Undo (Ctrl+Z)" className="p-1 rounded hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30 ml-1">
+              <span className="material-symbols-outlined text-[20px]">undo</span>
+            </button>
+          </div>
         </div>
 
         <div
@@ -496,8 +571,9 @@ export default function Workspace() {
                     if (f.type === 'signature' || f.type === 'initials') openModal(f.id);
                     else if (f.type === 'text') {
                       const text = prompt('Text:', f.text || '');
-                      if (text !== null) updateField(f.id, { text });
+                      if (text !== null) { snapshotHistory(); updateField(f.id, { text }); }
                     } else if (f.type === 'date') {
+                      snapshotHistory();
                       updateField(f.id, { text: todayFormatted() });
                     }
                   }}
@@ -591,30 +667,41 @@ export default function Workspace() {
               const signatory = signatories.find((s) => s.id === f.signatoryId);
               return (
                 <div key={f.id} className="flex items-center justify-between p-2 rounded-lg border border-outline-variant">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     <span className="material-symbols-outlined text-[16px] text-on-surface-variant">{FIELD_ICONS[f.type]}</span>
-                    <span className="text-sm text-on-surface">{FIELD_LABELS[f.type]} — {signatory?.name}</span>
+                    <span className="text-sm text-on-surface truncate">{FIELD_LABELS[f.type]} — {signatory?.name}</span>
                   </div>
-                  <span className={`material-symbols-outlined text-[16px] ${isFilled(f) ? 'text-tertiary' : 'text-on-surface-variant'}`}>
-                    {isFilled(f) ? 'check_circle' : 'radio_button_unchecked'}
-                  </span>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {numPages > 1 && (
+                      <button
+                        onClick={() => applyFieldToAllPages(f)}
+                        title="Apply this field to all pages"
+                        className="text-on-surface-variant hover:text-primary"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">library_add</span>
+                      </button>
+                    )}
+                    <span className={`material-symbols-outlined text-[16px] ${isFilled(f) ? 'text-tertiary' : 'text-on-surface-variant'}`}>
+                      {isFilled(f) ? 'check_circle' : 'radio_button_unchecked'}
+                    </span>
+                  </div>
                 </div>
               );
             })}
           </div>
         </section>
 
-        <section className="flex flex-col gap-2">
-          <button onClick={handleSaveTemplate} className="w-full bg-surface-container-lowest border border-outline-variant text-on-surface text-sm font-semibold px-4 py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-surface-container-low transition-colors">
-            <span className="material-symbols-outlined text-[18px]">style</span>
-            Save as Template
+        <section className="flex flex-col gap-2 sticky bottom-4 bg-background pt-2">
+          <button onClick={handleFinish} className="w-full bg-primary text-on-primary text-sm font-semibold px-4 py-3 rounded-lg flex items-center justify-center gap-2 hover:opacity-90 transition-opacity shadow-lg">
+            <span className="material-symbols-outlined">task_alt</span>
+            Finish & Sign
           </button>
           <button onClick={handleSaveDraft} className="w-full bg-surface-container-lowest border border-outline-variant text-on-surface text-sm font-semibold px-4 py-3 rounded-lg hover:bg-surface-container-low transition-colors">
             Save Draft
           </button>
-          <button onClick={handleFinish} className="w-full bg-primary text-on-primary text-sm font-semibold px-4 py-3 rounded-lg flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
-            <span className="material-symbols-outlined">task_alt</span>
-            Finish & Sign
+          <button onClick={handleSaveTemplate} className="w-full bg-surface-container-lowest border border-outline-variant text-on-surface text-sm font-semibold px-4 py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-surface-container-low transition-colors">
+            <span className="material-symbols-outlined text-[18px]">style</span>
+            Save as Template
           </button>
         </section>
       </aside>
@@ -622,78 +709,86 @@ export default function Workspace() {
       {/* Signature capture modal */}
       {modalFieldId && (
         <div className="fixed inset-0 bg-black/40 z-[100] flex items-center justify-center p-4" onClick={() => setModalFieldId(null)}>
-          <div className="bg-surface-container-lowest rounded-xl shadow-lg w-full max-w-[520px] p-6 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-on-surface">Add your signature</h3>
-              <button onClick={() => setModalFieldId(null)} className="text-on-surface-variant hover:text-on-surface">
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-
-            <div className="flex gap-2 border-b border-outline-variant">
-              {MODAL_TABS.filter(([tab]) => tab !== 'qr' || SHOW_QR_TAB).map(([tab, label]) => (
-                <button
-                  key={tab}
-                  onClick={() => setModalTab(tab)}
-                  className={`px-3 py-2 text-sm font-semibold border-b-2 ${modalTab === tab ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant'}`}
-                >
-                  {label}
+          <div className="flex flex-col md:flex-row gap-4 items-start" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-surface-container-lowest rounded-xl shadow-lg w-full md:w-[520px] p-6 flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-on-surface">Add your signature</h3>
+                <button onClick={() => setModalFieldId(null)} className="text-on-surface-variant hover:text-on-surface">
+                  <span className="material-symbols-outlined">close</span>
                 </button>
-              ))}
+              </div>
+
+              <div className="flex gap-2 border-b border-outline-variant">
+                {MODAL_TABS.map(([tab, label]) => (
+                  <button
+                    key={tab}
+                    onClick={() => setModalTab(tab)}
+                    className={`px-3 py-2 text-sm font-semibold border-b-2 ${modalTab === tab ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {modalTab === 'draw' && (
+                <div className="flex flex-col gap-2">
+                  <canvas
+                    ref={drawCanvasRef}
+                    width={460}
+                    height={180}
+                    className="bg-white border border-outline-variant rounded-lg cursor-crosshair w-full"
+                    onMouseDown={handleDrawStart}
+                    onMouseMove={handleDrawMove}
+                    onMouseUp={handleDrawEnd}
+                    onMouseLeave={handleDrawEnd}
+                  />
+                  <button onClick={clearDraw} className="self-start text-sm text-on-surface-variant hover:text-error">Clear</button>
+                </div>
+              )}
+
+              {modalTab === 'type' && (
+                <div className="flex flex-col gap-3">
+                  <input
+                    value={typedName}
+                    onChange={(e) => setTypedName(e.target.value)}
+                    placeholder="Type your name"
+                    className="border border-outline-variant rounded-lg px-4 py-3 text-sm outline-none focus:border-primary"
+                  />
+                  <div className="bg-white border border-outline-variant rounded-lg h-[100px] flex items-center justify-center overflow-hidden">
+                    <span style={{ fontFamily: 'Caveat, cursive' }} className="text-5xl text-on-surface">{typedName}</span>
+                  </div>
+                </div>
+              )}
+
+              {modalTab === 'upload' && (
+                <div className="flex flex-col gap-3">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="text-sm"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (!f) return;
+                      const reader = new FileReader();
+                      reader.onload = () => setUploadPreview(reader.result as string);
+                      reader.readAsDataURL(f);
+                    }}
+                  />
+                  <div className="bg-white border border-outline-variant rounded-lg h-[100px] flex items-center justify-center overflow-hidden">
+                    {uploadPreview && <img src={uploadPreview} className="max-h-full max-w-full" />}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => setModalFieldId(null)} className="px-4 py-2 rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-surface-container-high">Cancel</button>
+                <button onClick={saveSignatureToField} className="px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-on-primary hover:opacity-90">Use this signature</button>
+              </div>
             </div>
 
-            {modalTab === 'draw' && (
-              <div className="flex flex-col gap-2">
-                <canvas
-                  ref={drawCanvasRef}
-                  width={460}
-                  height={180}
-                  className="bg-white border border-outline-variant rounded-lg cursor-crosshair w-full"
-                  onMouseDown={handleDrawStart}
-                  onMouseMove={handleDrawMove}
-                  onMouseUp={handleDrawEnd}
-                  onMouseLeave={handleDrawEnd}
-                />
-                <button onClick={clearDraw} className="self-start text-sm text-on-surface-variant hover:text-error">Clear</button>
-              </div>
-            )}
-
-            {modalTab === 'type' && (
-              <div className="flex flex-col gap-3">
-                <input
-                  value={typedName}
-                  onChange={(e) => setTypedName(e.target.value)}
-                  placeholder="Type your name"
-                  className="border border-outline-variant rounded-lg px-4 py-3 text-sm outline-none focus:border-primary"
-                />
-                <div className="bg-white border border-outline-variant rounded-lg h-[100px] flex items-center justify-center overflow-hidden">
-                  <span style={{ fontFamily: 'Caveat, cursive' }} className="text-5xl text-on-surface">{typedName}</span>
-                </div>
-              </div>
-            )}
-
-            {modalTab === 'upload' && (
-              <div className="flex flex-col gap-3">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="text-sm"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (!f) return;
-                    const reader = new FileReader();
-                    reader.onload = () => setUploadPreview(reader.result as string);
-                    reader.readAsDataURL(f);
-                  }}
-                />
-                <div className="bg-white border border-outline-variant rounded-lg h-[100px] flex items-center justify-center overflow-hidden">
-                  {uploadPreview && <img src={uploadPreview} className="max-h-full max-w-full" />}
-                </div>
-              </div>
-            )}
-
-            {modalTab === 'qr' && (
-              <div className="flex flex-col items-center gap-3 py-2">
+            {SHOW_QR_TAB && (
+              <div className="bg-surface-container-lowest rounded-xl shadow-lg w-full md:w-[280px] p-6 flex flex-col items-center gap-3">
+                <h4 className="text-sm font-semibold text-on-surface self-start">Or sign on your phone</h4>
                 {qrImage ? (
                   <img src={qrImage} alt="Scan to sign on your phone" className="w-[220px] h-[220px]" />
                 ) : (
@@ -701,19 +796,12 @@ export default function Workspace() {
                     <span className="material-symbols-outlined text-primary text-3xl animate-spin">progress_activity</span>
                   </div>
                 )}
-                <p className="text-sm text-on-surface-variant text-center max-w-[320px]">
+                <p className="text-sm text-on-surface-variant text-center">
                   Scan this with your phone's camera to draw your signature on a touchscreen — it'll appear here
                   automatically, no app or sign-in needed on your phone.
                 </p>
               </div>
             )}
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button onClick={() => setModalFieldId(null)} className="px-4 py-2 rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-surface-container-high">Cancel</button>
-              {modalTab !== 'qr' && (
-                <button onClick={saveSignatureToField} className="px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-on-primary hover:opacity-90">Use this signature</button>
-              )}
-            </div>
           </div>
         </div>
       )}

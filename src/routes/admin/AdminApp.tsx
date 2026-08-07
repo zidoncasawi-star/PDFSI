@@ -136,7 +136,7 @@ export default function AdminApp() {
         </div>
       )}
 
-      <main className="flex-1 md:ml-64 flex flex-col min-h-screen">
+      <main className="w-full md:w-[calc(100%-16rem)] md:ml-64 flex flex-col min-h-screen">
         {page === 'overview' && (
           <>
             <Topbar

@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 
 interface SeoProps {
   title: string;
@@ -6,7 +7,7 @@ interface SeoProps {
   jsonLd?: object;
 }
 
-const SITE_NAME = 'Sign Pdf';
+const SITE_ORIGIN = 'https://signpdf.site';
 const JSON_LD_ID = 'seo-json-ld';
 
 function setMeta(name: string, content: string, attr: 'name' | 'property' = 'name') {
@@ -19,20 +20,35 @@ function setMeta(name: string, content: string, attr: 'name' | 'property' = 'nam
   el.setAttribute('content', content);
 }
 
-// Client-side SEO tags. This is a plain Vite SPA (no server-side rendering),
-// so search engines only see these once they execute JS — good enough for
-// Google, but if SEO is mission-critical, consider pre-rendering/SSR later.
+function setCanonical(href: string) {
+  let el = document.querySelector('link[rel="canonical"]');
+  if (!el) {
+    el = document.createElement('link');
+    el.setAttribute('rel', 'canonical');
+    document.head.appendChild(el);
+  }
+  el.setAttribute('href', href);
+}
+
+// Client-side SEO tags. This is a plain Vite SPA (no server-side rendering
+// at request time), but the build's postbuild step (scripts/prerender.mjs)
+// snapshots each public route's rendered <head> into a static HTML file, so
+// these per-page tags — including canonical, which MUST differ per route —
+// end up baked into what crawlers see.
 export default function Seo({ title, description, jsonLd }: SeoProps) {
+  const { pathname } = useLocation();
+
   useEffect(() => {
-    const fullTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
-    document.title = fullTitle;
+    document.title = title;
     setMeta('description', description);
-    setMeta('og:title', fullTitle, 'property');
+    setMeta('og:title', title, 'property');
     setMeta('og:description', description, 'property');
     setMeta('og:type', 'website', 'property');
+    setMeta('og:url', `${SITE_ORIGIN}${pathname}`, 'property');
     setMeta('twitter:card', 'summary_large_image');
-    setMeta('twitter:title', fullTitle);
+    setMeta('twitter:title', title);
     setMeta('twitter:description', description);
+    setCanonical(`${SITE_ORIGIN}${pathname}`);
 
     let script: HTMLScriptElement | null = document.getElementById(JSON_LD_ID) as HTMLScriptElement | null;
     if (jsonLd) {
@@ -50,7 +66,7 @@ export default function Seo({ title, description, jsonLd }: SeoProps) {
     return () => {
       document.getElementById(JSON_LD_ID)?.remove();
     };
-  }, [title, description, jsonLd]);
+  }, [title, description, jsonLd, pathname]);
 
   return null;
 }

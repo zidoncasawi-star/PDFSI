@@ -24,7 +24,7 @@ export default function Dashboard() {
     };
   }, [docs]);
 
-  const needsAttention = docs.filter((d) => d.status === 'draft' || d.status === 'pending').slice(0, 3);
+  const needsAttention = docs.filter((d) => d.status === 'draft' || d.status === 'pending').slice(0, 8);
   const recent = docs.slice(0, 6);
 
   return (
@@ -34,37 +34,38 @@ export default function Dashboard() {
         <p className="text-on-surface-variant">Track your document statuses and recent activity.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-        <section className="md:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <StatCard label="Pending Signatures" value={stats.pending} icon="hourglass_empty" />
-          <StatCard label="Completed (30d)" value={stats.completed30d} icon="task_alt" />
-          <StatCard label="Drafts" value={stats.drafts} icon="draft" />
-        </section>
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <StatCard label="Pending Signatures" value={stats.pending} icon="hourglass_empty" />
+        <StatCard label="Signed (Last 30 Days)" value={stats.completed30d} icon="task_alt" />
+        <StatCard label="Drafts" value={stats.drafts} icon="draft" />
+      </section>
 
-        <section className="md:col-span-4 bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-on-surface">Needs Attention</h2>
-            <Link to="/app/documents" className="text-primary text-sm font-semibold">View All</Link>
-          </div>
-          <div className="flex flex-col gap-3 flex-1">
-            {needsAttention.length === 0 && <p className="text-sm text-on-surface-variant">Nothing needs attention right now.</p>}
+      <section className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold text-on-surface">Needs Attention</h2>
+          <Link to="/app/documents" className="text-primary text-sm font-semibold">View All</Link>
+        </div>
+        {needsAttention.length === 0 ? (
+          <p className="text-sm text-on-surface-variant">Nothing needs attention right now.</p>
+        ) : (
+          <div className="flex gap-3 overflow-x-auto scrollbar-hide -mx-1 px-1">
             {needsAttention.map((d) => (
               <Link
                 key={d.id}
                 to={`/app/workspace/${d.id}`}
-                className="flex items-start gap-3 p-3 rounded-lg border border-outline-variant hover:bg-surface-container-low transition-colors"
+                className="flex-shrink-0 w-[260px] flex items-start gap-3 p-3 rounded-lg border border-outline-variant hover:bg-surface-container-low transition-colors"
               >
                 <span className="material-symbols-outlined text-primary mt-0.5">edit_document</span>
-                <div className="flex flex-col gap-1 flex-1">
-                  <span className="text-sm font-semibold text-on-surface">{d.name}</span>
+                <div className="flex flex-col gap-1 flex-1 min-w-0">
+                  <span className="text-sm font-semibold text-on-surface truncate">{d.name}</span>
                   <span className="text-xs text-on-surface-variant">{d.status === 'draft' ? 'Needs fields prepared' : 'Awaiting signature'}</span>
                 </div>
                 <span className="material-symbols-outlined text-on-surface-variant">chevron_right</span>
               </Link>
             ))}
           </div>
-        </section>
-      </div>
+        )}
+      </section>
 
       <section className="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden">
         <div className="p-4 border-b border-outline-variant flex justify-between items-center">
@@ -110,14 +111,12 @@ export default function Dashboard() {
 
 function StatCard({ label, value, icon }: { label: string; value: number; icon: string }) {
   return (
-    <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm relative overflow-hidden">
-      <div className="absolute top-0 right-0 p-4 opacity-10">
-        <span className="material-symbols-outlined text-6xl text-primary">{icon}</span>
+    <div className="bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 shadow-sm relative overflow-hidden flex items-center justify-between gap-3">
+      <div className="flex flex-col z-10 relative min-w-0">
+        <span className="text-xs font-medium text-on-surface-variant uppercase tracking-wider truncate">{label}</span>
+        <span className="text-2xl font-bold text-on-surface">{value}</span>
       </div>
-      <div className="flex flex-col gap-1 z-10 relative">
-        <span className="text-xs font-medium text-on-surface-variant uppercase tracking-wider">{label}</span>
-        <span className="text-3xl font-bold text-on-surface mt-2">{value}</span>
-      </div>
+      <span className="material-symbols-outlined text-2xl text-primary opacity-30 flex-shrink-0">{icon}</span>
     </div>
   );
 }

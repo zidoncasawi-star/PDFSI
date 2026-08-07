@@ -1,0 +1,17 @@
+{
+  "name": "Sign Pdf",
+  "short_name": "Sign Pdf",
+  "description": "Sign PDF documents online — free electronic signature tool.",
+  "start_url": "/app/login",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#DC2626",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

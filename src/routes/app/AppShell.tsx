@@ -5,8 +5,7 @@ import { useAuth } from './AuthContext';
 const NAV_ITEMS = [
   { to: '/app', label: 'Dashboard', icon: 'dashboard', end: true },
   { to: '/app/documents', label: 'Documents', icon: 'description' },
-  { to: '/app/templates', label: 'Templates', icon: 'style' },
-  { to: '/app/upload', label: 'New Document', icon: 'upload_file' }
+  { to: '/app/templates', label: 'Templates', icon: 'style' }
 ];
 
 function SidebarContent({ onNavigate, onLogout }: { onNavigate?: () => void; onLogout: () => void }) {
@@ -96,7 +95,7 @@ export default function AppShell() {
         </div>
       )}
 
-      <main className="flex-1 md:ml-64 flex flex-col min-h-screen">
+      <main className="w-full md:w-[calc(100%-16rem)] md:ml-64 flex flex-col min-h-screen">
         <header className="bg-surface/95 backdrop-blur-sm w-full h-16 flex items-center justify-between px-4 md:px-6 sticky top-0 z-30 border-b border-outline-variant gap-3">
           <div className="flex items-center gap-3 md:hidden">
             <button onClick={() => setMenuOpen(true)} className="text-on-surface-variant hover:text-on-surface p-1 -ml-1">
